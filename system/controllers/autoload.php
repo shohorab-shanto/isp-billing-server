@@ -125,6 +125,35 @@ switch ($action) {
             }
         }
         break;
+    case 'count_online_users':
+        header('Content-Type: application/json');
+        $onlineCount = 0;
+        if ($config['check_customer_online'] == 'yes') {
+            $activeRecharges = ORM::for_table('tbl_user_recharges')->where('status', 'on')->find_many();
+            foreach ($activeRecharges as $tur) {
+                $c = ORM::for_table('tbl_customers')->find_one($tur['customer_id']);
+                $p = ORM::for_table('tbl_plans')->find_one($tur['plan_id']);
+                if ($c && $p) {
+                    $dvc = Package::getDevice($p);
+                    if ($_app_stage != 'Demo') {
+                        if (file_exists($dvc)) {
+                            require_once $dvc;
+                            try {
+                                ini_set('default_socket_timeout', 3);
+                                if ((new $p['device'])->online_customer($c, $p['routers'])) {
+                                    $onlineCount++;
+                                }
+                            } catch (Exception $e) {
+                                // Skip errors, continue counting
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        echo json_encode(['count' => $onlineCount]);
+        exit;
+        break;
     case 'plan_is_active':
         $ds = ORM::for_table('tbl_user_recharges')->where('customer_id', $routes['2'])->find_array();
         if ($ds) {

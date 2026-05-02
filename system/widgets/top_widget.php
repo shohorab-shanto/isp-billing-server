@@ -28,6 +28,15 @@ class top_widget
         }
         $ui->assign('imonth', $imonth);
 
+        $itotal = ORM::for_table('tbl_transactions')
+            ->where_not_equal('method', 'Customer - Balance')
+            ->where_not_equal('method', 'Recharge Balance - Administrator')
+            ->sum('price');
+        if ($itotal == '') {
+            $itotal = '0.00';
+        }
+        $ui->assign('itotal', $itotal);
+
         $u_act = ORM::for_table('tbl_user_recharges')->where('status', 'on')->count();
         if (empty($u_act)) {
             $u_act = '0';
@@ -46,6 +55,13 @@ class top_widget
             $c_all = '0';
         }
         $ui->assign('c_all', $c_all);
+
+        $c_disabled = ORM::for_table('tbl_customers')->where('status', 'Disabled')->count();
+        if (empty($c_disabled)) {
+            $c_disabled = '0';
+        }
+        $ui->assign('c_disabled', $c_disabled);
+
         return $ui->fetch('widget/top_widget.tpl');
     }
 }
