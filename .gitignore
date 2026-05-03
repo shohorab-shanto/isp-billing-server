@@ -1,60 +1,47 @@
+# Local environment and editor files
 config.php
+docker-compose.yml
 .DS_Store
+.htaccess
+/.vs/
 .vscode/
-ui/ui/compiled
-ui/compiled/*.php
-ui/cache/*.php
+.idea/
+
+# Temporary/manual test files
 test.php
 sms.php
-pages/
-system/cache/**
-system/plugin/*
-!system/cache/index.html
-!system/plugin/index.html
-system/paymentgateway/ui/**
-system/paymentgateway/**
-!system/paymentgateway/ui/
-!system/paymentgateway/ui/index.html
-!system/paymentgateway/index.html
-!system/plugin/ui/
-system/plugin/ui/*
-!system/plugin/ui/index.html
-ui/ui_custom/**
-!ui/ui_custom/index.html
-!ui/ui_custom/README.md
-system/uploads/**
-!system/uploads/*.default.png
-system/uploads/sms/**
-!system/uploads/sms/index.html
-system/uploads/system/**
-!system/uploads/system/index.html
-ui/themes/**
-!ui/themes/index.html
-!ui/themes/README.md
 scanLang.php
-system/lan/**
-!system/lan/index.html
-!system/lan/indonesia.json
-!system/lan/spanish.json
-!system/lan/turkish.json
-!system/lan/english.json
-!system/lan/country.json
 *.zip
-system/devices/**
-!system/devices/readme.md
-!system/devices/Dummy.php
-!system/devices/Radius.php
-!system/devices/RadiusRest.php
-!system/devices/MikrotikPppoe.php
-!system/devices/MikrotikPppoeCustom.php
-!system/devices/MikrotikHotspot.php
-/.vs
-docker-compose.yml
-docs/**
-!docs/*.html
-!docs/*.md
-.htaccess
-.idea
-!docs/insomnia.rest.json
+
+# Runtime caches and compiled templates
+system/cache/**
+!system/cache/
+!system/cache/index.html
+ui/cache/**
+!ui/cache/
+!ui/cache/index.html
+ui/compiled/**
+!ui/compiled/
+!ui/compiled/index.html
+ui/ui/compiled/**
+
+# Runtime uploads and generated customer files
+system/uploads/**
+!system/uploads/
+!system/uploads/*.default.png
 !system/uploads/paid.png
+!system/uploads/sms/
+!system/uploads/sms/index.html
+!system/uploads/system/
+!system/uploads/system/index.html
 system/uploads/invoices/**
+
+# Keep deployable application code trackable:
+# - system/plugin/**
+# - system/paymentgateway/**
+# - system/devices/**
+# - system/lan/**
+# - ui/themes/**
+# - ui/ui_custom/**
+# - docs/**
+# - pages/**
