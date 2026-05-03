@@ -94,18 +94,63 @@
     </div>
 </div>
 <script>
-    window.addEventListener('DOMContentLoaded', function() {
-        // Show loading indicator
-        $('#online-users-count').hide();
-        $('#online-users-loading').show();
+    (function() {
+        function showOnlineUsersCount(count) {
+            var countEl = document.getElementById('online-users-count');
+            var loadingEl = document.getElementById('online-users-loading');
 
-        $.getJSON("{Text::url('')}autoload/count_online_users", function(data) {
-            if (data && data.count !== undefined) {
-                $('#online-users-count').text(data.count);
+            if (countEl) {
+                countEl.textContent = count;
+                countEl.style.display = '';
             }
-            // Hide loading indicator and show count
-            $('#online-users-loading').hide();
-            $('#online-users-count').show();
-        });
-    });
+
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        function loadOnlineUsersCount() {
+            var countEl = document.getElementById('online-users-count');
+            var loadingEl = document.getElementById('online-users-loading');
+
+            if (countEl) {
+                countEl.style.display = 'none';
+            }
+
+            if (loadingEl) {
+                loadingEl.style.display = '';
+            }
+
+            var request = new XMLHttpRequest();
+            request.open('GET', "?_route=autoload/count_online_users", true);
+            request.setRequestHeader('Accept', 'application/json');
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) {
+                    return;
+                }
+
+                if (request.status < 200 || request.status >= 300) {
+                    showOnlineUsersCount(0);
+                    return;
+                }
+
+                try {
+                    var data = JSON.parse(request.responseText);
+                    showOnlineUsersCount(data && data.count !== undefined ? data.count : 0);
+                } catch (e) {
+                    showOnlineUsersCount(0);
+                }
+            };
+            request.onerror = function() {
+                showOnlineUsersCount(0);
+            };
+            request.send();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadOnlineUsersCount);
+        } else {
+            loadOnlineUsersCount();
+        }
+    })();
 </script>

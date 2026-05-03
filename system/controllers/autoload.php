@@ -127,7 +127,15 @@ switch ($action) {
         break;
     case 'count_online_users':
         header('Content-Type: application/json');
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+        if (function_exists('ini_set')) {
+            @ini_set('max_execution_time', 300);
+            @ini_set('default_socket_timeout', 1);
+        }
         $onlineCount = 0;
+        $errorCount = 0;
         if ($config['check_customer_online'] == 'yes') {
             $activeRecharges = ORM::for_table('tbl_user_recharges')->where('status', 'on')->find_many();
             foreach ($activeRecharges as $tur) {
@@ -137,13 +145,17 @@ switch ($action) {
                     $dvc = Package::getDevice($p);
                     if ($_app_stage != 'Demo') {
                         if (file_exists($dvc)) {
-                            require_once $dvc;
                             try {
-                                ini_set('default_socket_timeout', 3);
-                                if ((new $p['device'])->online_customer($c, $p['routers'])) {
+                                require_once $dvc;
+                                $device = $p['device'];
+                                if (empty($device) || !class_exists($device) || !method_exists($device, 'online_customer')) {
+                                    continue;
+                                }
+                                if ((new $device)->online_customer($c, $p['routers'])) {
                                     $onlineCount++;
                                 }
-                            } catch (Exception $e) {
+                            } catch (Throwable $e) {
+                                $errorCount++;
                                 // Skip errors, continue counting
                             }
                         }
@@ -151,7 +163,7 @@ switch ($action) {
                 }
             }
         }
-        echo json_encode(['count' => $onlineCount]);
+        echo json_encode(['count' => $onlineCount, 'errors' => $errorCount]);
         exit;
         break;
     case 'plan_is_active':
