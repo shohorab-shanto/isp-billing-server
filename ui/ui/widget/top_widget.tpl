@@ -75,6 +75,7 @@
             <a href="{Text::url('customers/list')}" class="small-box-footer" style="background: rgba(0,0,0,0.1); color: white;">{Lang::T('View Details')} <i class="fa fa-arrow-circle-right"></i></a>
         </div>
     </div>
+    {* Online users counter temporarily disabled from dashboard.
     <div class="col-lg-3 col-xs-6">
         <div class="small-box" style="background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%); border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 198, 255, 0.4);">
             <div class="inner">
@@ -92,7 +93,9 @@
             <a href="{Text::url('plan/active')}" class="small-box-footer" style="background: rgba(0,0,0,0.1); color: white;">{Lang::T('View Details')} <i class="fa fa-arrow-circle-right"></i></a>
         </div>
     </div>
+    *}
 </div>
+{* Online users counter script temporarily disabled.
 <script>
     (function() {
         function showOnlineUsersCount(count) {
@@ -154,3 +157,4 @@
         }
     })();
 </script>
+*}
