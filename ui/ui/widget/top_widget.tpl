@@ -75,13 +75,11 @@
             <a href="{Text::url('customers/list')}" class="small-box-footer" style="background: rgba(0,0,0,0.1); color: white;">{Lang::T('View Details')} <i class="fa fa-arrow-circle-right"></i></a>
         </div>
     </div>
-    {* Online users counter temporarily disabled from dashboard.
     <div class="col-lg-3 col-xs-6">
         <div class="small-box" style="background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%); border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 198, 255, 0.4);">
             <div class="inner">
                 <h3 class="text-bold" style="font-size: 28px; color: white; margin: 0;">
-                    <span id="online-users-count" style="display: none;">0</span>
-                    <span id="online-users-loading">
+                    <span id="online-users-count" api-get-text="{Text::url('autoload/count_online_users')}">
                         <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
                     </span>
                 </h3>
@@ -93,68 +91,4 @@
             <a href="{Text::url('plan/active')}" class="small-box-footer" style="background: rgba(0,0,0,0.1); color: white;">{Lang::T('View Details')} <i class="fa fa-arrow-circle-right"></i></a>
         </div>
     </div>
-    *}
 </div>
-{* Online users counter script temporarily disabled.
-<script>
-    (function() {
-        function showOnlineUsersCount(count) {
-            var countEl = document.getElementById('online-users-count');
-            var loadingEl = document.getElementById('online-users-loading');
-
-            if (countEl) {
-                countEl.textContent = count;
-                countEl.style.display = '';
-            }
-
-            if (loadingEl) {
-                loadingEl.style.display = 'none';
-            }
-        }
-
-        function loadOnlineUsersCount() {
-            var countEl = document.getElementById('online-users-count');
-            var loadingEl = document.getElementById('online-users-loading');
-
-            if (countEl) {
-                countEl.style.display = 'none';
-            }
-
-            if (loadingEl) {
-                loadingEl.style.display = '';
-            }
-
-            var request = new XMLHttpRequest();
-            request.open('GET', "?_route=autoload/count_online_users", true);
-            request.setRequestHeader('Accept', 'application/json');
-            request.onreadystatechange = function() {
-                if (request.readyState !== 4) {
-                    return;
-                }
-
-                if (request.status < 200 || request.status >= 300) {
-                    showOnlineUsersCount(0);
-                    return;
-                }
-
-                try {
-                    var data = JSON.parse(request.responseText);
-                    showOnlineUsersCount(data && data.count !== undefined ? data.count : 0);
-                } catch (e) {
-                    showOnlineUsersCount(0);
-                }
-            };
-            request.onerror = function() {
-                showOnlineUsersCount(0);
-            };
-            request.send();
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadOnlineUsersCount);
-        } else {
-            loadOnlineUsersCount();
-        }
-    })();
-</script>
-*}
