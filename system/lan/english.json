@@ -1123,5 +1123,7 @@
     "Select_Payment_Gateway": "Select Payment Gateway",
     "View_Details": "View Details",
     "Total_Customers": "Total Customers",
-    "Disabled_Customers": "Disabled Customers"
+    "Disabled_Customers": "Disabled Customers",
+    "No_email_found_": "No email found.",
+    "Buy_Balance_Package": "Buy Balance Package"
 }

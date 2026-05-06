@@ -31,9 +31,14 @@ function UserDataUsage()
 
 function UserDataUsage_fetch_user_in_out_data($search = '', $page = 1, $perPage = 10)
 {
-    // Check for the existence of the table and initialize query accordingly
-    $table = isTableExist('rad_acct') ? 'rad_acct' : 'radacct';
-    $query = ORM::for_table($table)->where_not_equal('acctoutputoctets', 0);
+    $source = UserDataUsage_get_accounting_source();
+    if ($source === null) {
+        return [];
+    }
+
+    $table = $source['table'];
+    $connection = $source['connection'];
+    $query = ORM::for_table($table, $connection)->where_not_equal('acctoutputoctets', 0);
 
     // Handle search functionality
     if ($search) {
@@ -52,19 +57,23 @@ function UserDataUsage_fetch_user_in_out_data($search = '', $page = 1, $perPage 
         $row->totalBytes = UserDataUsage_convert_bytes(floatval($row->acctoutputoctets) + floatval($row->acctinputoctets));
 
         // Fetch the last record for status determination
-        $lastRecord = ORM::for_table($table)
+        $lastRecord = ORM::for_table($table, $connection)
             ->where('username', $row->username)
             ->where_not_equal('acctoutputoctets', 0)
-            ->order_by_desc($table === 'rad_acct' ? 'acctstatustype' : 'acctstoptime')
+            ->order_by_desc($source['status_column'])
             ->find_one();
 
         // Set connection status based on the last record's type
-        if ($lastRecord && ($lastRecord->acctstatustype === 'Start' || $lastRecord->acctstoptime === null)) {
+        $isConnected = $source['status_column'] === 'acctstatustype'
+            ? ($lastRecord && ($lastRecord->acctstatustype === 'Start' || $lastRecord->acctstatustype === 'Interim-Update'))
+            : ($lastRecord && $lastRecord->acctstoptime === null);
+
+        if ($isConnected) {
             $row->status = '<span class="badge btn-success">Connected</span>';
         } else {
             $row->status = '<span class="badge btn-danger">Disconnected</span>';
         }
-		$row->sdate = isset($lastRecord['dateAdded']) ? $lastRecord['dateAdded'] : $lastRecord['acctstarttime'];
+        $row->sdate = $lastRecord ? ($lastRecord[$source['date_column']] ?? '') : '';
     }
 
     return $data;
@@ -72,20 +81,14 @@ function UserDataUsage_fetch_user_in_out_data($search = '', $page = 1, $perPage 
 
 function UserDataUsage_count_user_in_out_data($search = '')
 {
-    // Check for the existence of the tables and initialize query accordingly
-    $tables = ['rad_acct', 'radacct']; // Add more table names here if needed
-    $query = null;
-    foreach ($tables as $table) {
-        if (isTableExist($table)) {
-            $query = ORM::for_table($table)->where_not_equal('acctoutputoctets', 0.00);
-            break;
-        }
-    }
+    $source = UserDataUsage_get_accounting_source();
 
     // If no table exists, return an error message
-    if ($query === null) {
-        return "Error: No valid table found in the database.";
+    if ($source === null) {
+        return "Error: No valid accounting table found. Enable Radius accounting or install the rad_acct/radacct table.";
     }
+
+    $query = ORM::for_table($source['table'], $source['connection'])->where_not_equal('acctoutputoctets', 0.00);
 
     // Apply search filter if applicable
     if ($search) {
@@ -98,6 +101,50 @@ function UserDataUsage_count_user_in_out_data($search = '')
         return "Error: Unable to retrieve the count of records.";
     }
     return $count;
+}
+
+function UserDataUsage_get_accounting_source()
+{
+    $sources = [
+        [
+            'table' => 'rad_acct',
+            'connection' => ORM::DEFAULT_CONNECTION,
+            'status_column' => 'acctstatustype',
+            'date_column' => 'dateAdded',
+        ],
+        [
+            'table' => 'radacct',
+            'connection' => ORM::DEFAULT_CONNECTION,
+            'status_column' => 'acctstoptime',
+            'date_column' => 'acctstarttime',
+        ],
+        [
+            'table' => 'radacct',
+            'connection' => 'radius',
+            'status_column' => 'acctstoptime',
+            'date_column' => 'acctstarttime',
+        ],
+    ];
+
+    foreach ($sources as $source) {
+        if (UserDataUsage_table_exists($source['table'], $source['connection'])) {
+            return $source;
+        }
+    }
+
+    return null;
+}
+
+function UserDataUsage_table_exists($table, $connection)
+{
+    try {
+        $db = ORM::get_db($connection);
+        $statement = $db->prepare('SHOW TABLES LIKE ?');
+        $statement->execute([$table]);
+        return $statement->fetchColumn() !== false;
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
 function UserDataUsage_create_pagination($page, $perPage, $total)
