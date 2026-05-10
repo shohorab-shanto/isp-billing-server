@@ -20,6 +20,16 @@ $this_week_start = date('Y-m-d', strtotime('previous sunday'));
 $before_30_days = date('Y-m-d', strtotime('today - 30 days'));
 $month_n = date('n');
 
+function rbacScopeTransactions($query, $admin)
+{
+    return Rbac::scopeOwned($query, 'tbl_transactions', $admin);
+}
+
+function rbacTransactionValues($column, $admin)
+{
+    return array_column(rbacScopeTransactions(ORM::for_table('tbl_transactions')->select($column)->distinct($column), $admin)->find_array(), $column);
+}
+
 switch ($action) {
     case 'ajax':
         $data = $routes['2'];
@@ -39,20 +49,20 @@ switch ($action) {
         $te = _req('te', '23:59:59');
         $types = ORM::for_table('tbl_transactions')->getEnum('type');
         $tps = ($_GET['tps']) ? $_GET['tps'] : $types;
-        $plans = array_column(ORM::for_table('tbl_transactions')->select('plan_name')->distinct('plan_name')->find_array(), 'plan_name');
+        $plans = rbacTransactionValues('plan_name', $admin);
         $plns = ($_GET['plns']) ? $_GET['plns'] : $plans;
         $methods = array_column(ORM::for_table('tbl_transactions')->rawQuery("SELECT DISTINCT SUBSTRING_INDEX(`method`, ' - ', 1) as method FROM tbl_transactions;")->findArray(), 'method');
         $mts = ($_GET['mts']) ? $_GET['mts'] : $methods;
-        $routers = array_column(ORM::for_table('tbl_transactions')->select('routers')->distinct('routers')->find_array(), 'routers');
+        $routers = rbacTransactionValues('routers', $admin);
         $rts = ($_GET['rts']) ? $_GET['rts'] : $routers;
         $result = [];
         switch ($data) {
             case 'type':
                 foreach ($tps as $tp) {
-                    $query = ORM::for_table('tbl_transactions')
+                    $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-                        ->where('type', $tp);
+                        ->where('type', $tp), $admin);
                     if (count($mts) > 0) {
                         if (count($mts) != count($methods)) {
                             $w = [];
@@ -79,10 +89,10 @@ switch ($action) {
                 break;
             case 'plan':
                 foreach ($plns as $pln) {
-                    $query = ORM::for_table('tbl_transactions')
+                    $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-                        ->where('plan_name', $pln);
+                        ->where('plan_name', $pln), $admin);
                     if (count($tps) > 0) {
                         $query->where_in('type', $tps);
                     }
@@ -109,10 +119,10 @@ switch ($action) {
                 break;
             case 'method':
                 foreach ($mts as $mt) {
-                    $query = ORM::for_table('tbl_transactions')
+                    $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-                        ->where_like('method', "$mt - %");
+                        ->where_like('method', "$mt - %"), $admin);
                     if (count($tps) > 0) {
                         $query->where_in('type', $tps);
                     }
@@ -131,10 +141,10 @@ switch ($action) {
                 break;
             case 'router':
                 foreach ($rts as $rt) {
-                    $query = ORM::for_table('tbl_transactions')
+                    $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
                         ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-                        ->where('routers', $rt);
+                        ->where('routers', $rt), $admin);
                     if (count($tps) > 0) {
                         $query->where_in('type', $tps);
                     }
@@ -149,10 +159,10 @@ switch ($action) {
                 }
                 break;
             case 'line':
-                $query = ORM::for_table('tbl_transactions')
+                $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')
                     ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
                     ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-                    ->order_by_desc('id');
+                    ->order_by_desc('id'), $admin);
                 if (count($tps) > 0) {
                     $query->where_in('type', $tps);
                 }
@@ -265,10 +275,10 @@ switch ($action) {
             r2(getUrl('logs/list/'), 's', "Delete logs older than $keep days");
         }
         if ($q != '') {
-            $query = ORM::for_table('tbl_transactions')->where_like('invoice', '%' . $q . '%')->order_by_desc('id');
+            $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')->where_like('invoice', '%' . $q . '%')->order_by_desc('id'), $admin);
             $d = Paginator::findMany($query, ['q' => $q]);
         } else {
-            $query = ORM::for_table('tbl_transactions')->order_by_desc('id');
+            $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')->order_by_desc('id'), $admin);
             $d = Paginator::findMany($query);
         }
 
@@ -290,7 +300,7 @@ switch ($action) {
         $tdate = _post('tdate');
         $stype = _post('stype');
 
-        $d = ORM::for_table('tbl_transactions');
+        $d = rbacScopeTransactions(ORM::for_table('tbl_transactions'), $admin);
         if ($stype != '') {
             $d->where('type', $stype);
         }
@@ -300,7 +310,7 @@ switch ($action) {
         $d->order_by_desc('id');
         $x =  $d->find_many();
 
-        $dr = ORM::for_table('tbl_transactions');
+        $dr = rbacScopeTransactions(ORM::for_table('tbl_transactions'), $admin);
         if ($stype != '') {
             $dr->where('type', $stype);
         }
@@ -322,8 +332,8 @@ switch ($action) {
     default:
         $types = ORM::for_table('tbl_transactions')->getEnum('type');
         $methods = array_column(ORM::for_table('tbl_transactions')->rawQuery("SELECT DISTINCT SUBSTRING_INDEX(`method`, ' - ', 1) as method FROM tbl_transactions;")->findArray(), 'method');
-        $routers = array_column(ORM::for_table('tbl_transactions')->select('routers')->distinct('routers')->find_array(), 'routers');
-        $plans = array_column(ORM::for_table('tbl_transactions')->select('plan_name')->distinct('plan_name')->find_array(), 'plan_name');
+        $routers = rbacTransactionValues('routers', $admin);
+        $plans = rbacTransactionValues('plan_name', $admin);
         $reset_day = $config['reset_day'];
         if (empty($reset_day)) {
             $reset_day = 1;
@@ -345,10 +355,10 @@ switch ($action) {
         $urlquery = str_replace('_route=reports', '', $_SERVER['QUERY_STRING']);
 
 
-        $query = ORM::for_table('tbl_transactions')
+        $query = rbacScopeTransactions(ORM::for_table('tbl_transactions')
             ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
             ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-            ->order_by_desc('id');
+            ->order_by_desc('id'), $admin);
         if (count($tps) > 0) {
             $query->where_in('type', $tps);
         }

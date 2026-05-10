@@ -1,11 +1,25 @@
 <?php
-register_menu("User Data Usage", true, "UserDataUsageAdmin",
-    'SERVICES', '');
+register_menu(
+    "User Data Usage",
+    true,
+    "UserDataUsageAdmin",
+    'SERVICES',
+    '',
+    '',
+    'success',
+    [],
+    'plugins.data_usage.view'
+);
+register_plugin_route("UserDataUsageAdmin", 'plugins.data_usage.view', true, false);
 
 function UserDataUsageAdmin()
 {
     global $ui;
     _admin();
+    if (!can('plugins.data_usage.view')) {
+        r2(U . "dashboard", 'e', Lang::T('You do not have permission to access this page'));
+        return;
+    }
     $ui->assign('_title', 'User Data Usage');
     $ui->assign('_system_menu', '');
     $admin = Admin::_info();

@@ -15,7 +15,7 @@
     <div class="col-sm-12">
         <div class="panel panel-hovered mb20 panel-primary">
             <div class="panel-heading">
-                {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                {if can('customers.export', $_admin)}
                 <div class="btn-group pull-right">
                     <a class="btn btn-primary btn-xs" title="save"
                         href="{Text::url('customers/csv&token=', $csrf_token)}"
@@ -78,18 +78,22 @@
                                 <div class="input-group-btn">
                                     <button class="btn btn-primary" type="submit"><span class="fa fa-search"></span>
                                         {Lang::T('Search')}</button>
-                                    <button class="btn btn-info" type="submit" name="export" value="csv">
-                                        <span class="glyphicon glyphicon-download" aria-hidden="true"></span> CSV
-                                    </button>
+                                    {if can('customers.export', $_admin)}
+                                        <button class="btn btn-info" type="submit" name="export" value="csv">
+                                            <span class="glyphicon glyphicon-download" aria-hidden="true"></span> CSV
+                                        </button>
+                                    {/if}
                                 </div>
                             </div>
                         </div>
+                        {if can('customers.create', $_admin)}
                         <div class="col-lg-1">
                             <a href="{Text::url('customers/add')}" class="btn btn-success text-black btn-block"
                                 title="{Lang::T('Add')}">
                                 <i class="ion ion-android-add"></i><i class="glyphicon glyphicon-user"></i>
                             </a>
                         </div>
+                        {/if}
                     </div>
                 </form>
                 <br>&nbsp;
@@ -157,15 +161,19 @@
                                     <a href="{Text::url('customers/view/')}{$ds['id']}" id="{$ds['id']}"
                                         style="margin: 0px; color:black"
                                         class="btn btn-success btn-xs">&nbsp;&nbsp;{Lang::T('View')}&nbsp;&nbsp;</a>
-                                    <a href="{Text::url('customers/edit/', $ds['id'], '&token=', $csrf_token)}"
-                                        id="{$ds['id']}" style="margin: 0px; color:black"
-                                        class="btn btn-info btn-xs">&nbsp;&nbsp;{Lang::T('Edit')}&nbsp;&nbsp;</a>
-                                    <a href="{Text::url('customers/sync/', $ds['id'], '&token=', $csrf_token)}"
-                                        id="{$ds['id']}" style="margin: 5px; color:black"
-                                        class="btn btn-success btn-xs">&nbsp;&nbsp;{Lang::T('Sync')}&nbsp;&nbsp;</a>
-                                    <a href="{Text::url('plan/recharge/', $ds['id'], '&token=', $csrf_token)}"
-                                        id="{$ds['id']}" style="margin: 0px;"
-                                        class="btn btn-primary btn-xs">{Lang::T('Recharge')}</a>
+                                    {if can('customers.edit', $_admin)}
+                                        <a href="{Text::url('customers/edit/', $ds['id'], '&token=', $csrf_token)}"
+                                            id="{$ds['id']}" style="margin: 0px; color:black"
+                                            class="btn btn-info btn-xs">&nbsp;&nbsp;{Lang::T('Edit')}&nbsp;&nbsp;</a>
+                                    {/if}
+                                    {if can('customers.recharge', $_admin)}
+                                        <a href="{Text::url('customers/sync/', $ds['id'], '&token=', $csrf_token)}"
+                                            id="{$ds['id']}" style="margin: 5px; color:black"
+                                            class="btn btn-success btn-xs">&nbsp;&nbsp;{Lang::T('Sync')}&nbsp;&nbsp;</a>
+                                        <a href="{Text::url('plan/recharge/', $ds['id'], '&token=', $csrf_token)}"
+                                            id="{$ds['id']}" style="margin: 0px;"
+                                            class="btn btn-primary btn-xs">{Lang::T('Recharge')}</a>
+                                    {/if}
                                 </td>
                             </tr>
                             {/foreach}
@@ -181,14 +189,14 @@
                                     {/if}
                                 </div> -->
                                 <div class="btn-group" role="group">
-                                     <button id="bulkDisable" class="btn btn-danger">Disable</button>
+                                     {if can('customers.edit', $_admin)}<button id="bulkDisable" class="btn btn-danger">Disable</button>{/if}
                                         </div>
 
                                 <div class="btn-group" role="group">
-                                    <button id="bulkEnable" class="btn btn-success">Enable</button>
+                                    {if can('customers.edit', $_admin)}<button id="bulkEnable" class="btn btn-success">Enable</button>{/if}
                                         </div>
                                 <div class="btn-group" role="group">
-                                    <button id="bulkRecharge" class="btn btn-primary">Recharge</button>
+                                    {if can('customers.recharge', $_admin)}<button id="bulkRecharge" class="btn btn-primary">Recharge</button>{/if}
                                         </div>
                                     </div>
                                 </div>

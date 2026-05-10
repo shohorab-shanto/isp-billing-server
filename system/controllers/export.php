@@ -24,14 +24,24 @@ $before_30_days = date('Y-m-d', strtotime('today - 30 days'));
 //this month
 $month_n = date('n');
 
+function rbacScopeExportTransactions($query, $admin)
+{
+    return Rbac::scopeOwned($query, 'tbl_transactions', $admin);
+}
+
+function rbacExportTransactionValues($column, $admin)
+{
+    return array_column(rbacScopeExportTransactions(ORM::for_table('tbl_transactions')->select($column)->distinct($column), $admin)->find_array(), $column);
+}
+
 switch ($action) {
 
     case 'print-by-date':
         $mdate = date('Y-m-d');
         $types = ORM::for_table('tbl_transactions')->getEnum('type');
         $methods = array_column(ORM::for_table('tbl_transactions')->rawQuery("SELECT DISTINCT SUBSTRING_INDEX(`method`, ' - ', 1) as method FROM tbl_transactions;")->findArray(), 'method');
-        $routers = array_column(ORM::for_table('tbl_transactions')->select('routers')->distinct('routers')->find_array(), 'routers');
-        $plans = array_column(ORM::for_table('tbl_transactions')->select('plan_name')->distinct('plan_name')->find_array(), 'plan_name');
+        $routers = rbacExportTransactionValues('routers', $admin);
+        $plans = rbacExportTransactionValues('plan_name', $admin);
         $reset_day = $config['reset_day'];
         if (empty($reset_day)) {
             $reset_day = 1;
@@ -51,10 +61,10 @@ switch ($action) {
         $ts = _req('ts', '00:00:00');
         $te = _req('te', '23:59:59');
 
-        $query = ORM::for_table('tbl_transactions')
+        $query = rbacScopeExportTransactions(ORM::for_table('tbl_transactions')
             ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
             ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-            ->order_by_desc('id');
+            ->order_by_desc('id'), $admin);
         if (count($tps) > 0) {
             $query->where_in('type', $tps);
         }
@@ -90,8 +100,8 @@ switch ($action) {
         $mdate = date('Y-m-d');
         $types = ORM::for_table('tbl_transactions')->getEnum('type');
         $methods = array_column(ORM::for_table('tbl_transactions')->rawQuery("SELECT DISTINCT SUBSTRING_INDEX(`method`, ' - ', 1) as method FROM tbl_transactions;")->findArray(), 'method');
-        $routers = array_column(ORM::for_table('tbl_transactions')->select('routers')->distinct('routers')->find_array(), 'routers');
-        $plans = array_column(ORM::for_table('tbl_transactions')->select('plan_name')->distinct('plan_name')->find_array(), 'plan_name');
+        $routers = rbacExportTransactionValues('routers', $admin);
+        $plans = rbacExportTransactionValues('plan_name', $admin);
         $reset_day = $config['reset_day'];
         if (empty($reset_day)) {
             $reset_day = 1;
@@ -111,10 +121,10 @@ switch ($action) {
         $ts = _req('ts', '00:00:00');
         $te = _req('te', '23:59:59');
 
-        $query = ORM::for_table('tbl_transactions')
+        $query = rbacScopeExportTransactions(ORM::for_table('tbl_transactions')
             ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) >= " . strtotime("$sd $ts"))
             ->whereRaw("UNIX_TIMESTAMP(CONCAT(`recharged_on`,' ',`recharged_time`)) <= " . strtotime("$ed $te"))
-            ->order_by_desc('id');
+            ->order_by_desc('id'), $admin);
         if (count($tps) > 0) {
             $query->where_in('type', $tps);
         }
@@ -257,7 +267,7 @@ EOF;
         $tdate = _post('tdate');
         $stype = _post('stype');
 
-        $d = ORM::for_table('tbl_transactions');
+        $d = rbacScopeExportTransactions(ORM::for_table('tbl_transactions'), $admin);
         if ($stype != '') {
             $d->where('type', $stype);
         }
@@ -266,7 +276,7 @@ EOF;
         $d->order_by_desc('id');
         $x =  $d->find_many();
 
-        $dr = ORM::for_table('tbl_transactions');
+        $dr = rbacScopeExportTransactions(ORM::for_table('tbl_transactions'), $admin);
         if ($stype != '') {
             $dr->where('type', $stype);
         }
@@ -289,7 +299,7 @@ EOF;
         $fdate = _post('fdate');
         $tdate = _post('tdate');
         $stype = _post('stype');
-        $d = ORM::for_table('tbl_transactions');
+        $d = rbacScopeExportTransactions(ORM::for_table('tbl_transactions'), $admin);
         if ($stype != '') {
             $d->where('type', $stype);
         }
@@ -299,7 +309,7 @@ EOF;
         $d->order_by_desc('id');
         $x =  $d->find_many();
 
-        $dr = ORM::for_table('tbl_transactions');
+        $dr = rbacScopeExportTransactions(ORM::for_table('tbl_transactions'), $admin);
         if ($stype != '') {
             $dr->where('type', $stype);
         }

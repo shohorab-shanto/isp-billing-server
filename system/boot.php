@@ -91,6 +91,38 @@ try {
     $admin = Admin::_info();
     $sys_render = $root_path . File::pathFixer('system/controllers/' . $handler . '.php');
     if (file_exists($sys_render)) {
+        $routePermissions = [
+            'dashboard' => ['menu.dashboard'],
+            'customers' => ['menu.customers', 'customers.view', 'customers.create'],
+            'search_user' => ['customers.view'],
+            'plan' => ['menu.services', 'customers.recharge'],
+            'coupons' => ['menu.services'],
+            'services' => ['menu.internet_plan', 'plans.view', 'plans.manage'],
+            'bandwidth' => ['menu.internet_plan', 'plans.view', 'plans.manage'],
+            'maps' => ['menu.maps'],
+            'reports' => ['reports.view'],
+            'export' => ['reports.export'],
+            'message' => ['message.send'],
+            'routers' => ['network.manage'],
+            'pool' => ['network.manage'],
+            'odp' => ['network.manage'],
+            'radius' => ['menu.radius'],
+            'pages' => ['menu.pages'],
+            'settings' => ['menu.settings', 'settings.users', 'settings.general', 'rbac.manage', 'resellers.create'],
+            'customfield' => ['settings.general'],
+            'widgets' => ['settings.general'],
+            'paymentgateway' => ['settings.payment_gateway'],
+            'pluginmanager' => ['settings.plugin_manager'],
+            'logs' => ['menu.logs'],
+            'community' => ['menu.community'],
+        ];
+        if (isset($routePermissions[$handler])) {
+            _admin();
+            if (!canAny($routePermissions[$handler], $admin)) {
+                _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+            }
+        }
+
         $menus = array();
         // "name" => $name,
         // "admin" => $admin,
@@ -99,7 +131,9 @@ try {
         $ui->assign('_system_menu', $routes[0]);
         foreach ($menu_registered as $menu) {
             if ($menu['admin'] && _admin(false)) {
-                if (count($menu['auth']) == 0 || in_array($admin['user_type'], $menu['auth'])) {
+                $allowedByType = count($menu['auth']) == 0 || in_array($admin['user_type'], $menu['auth']);
+                $allowedByPermission = empty($menu['permission']) || can($menu['permission'], $admin);
+                if ($allowedByType && $allowedByPermission) {
                     $menus[$menu['position']] .= '<li' . (($routes[1] == $menu['function']) ? ' class="active"' : '') . '><a href="' . getUrl('plugin/' . $menu['function']) . '">';
                     if (!empty($menu['icon'])) {
                         $menus[$menu['position']] .= '<i class="' . $menu['icon'] . '"></i>';

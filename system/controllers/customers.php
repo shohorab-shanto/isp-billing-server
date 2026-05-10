@@ -22,7 +22,7 @@ EOT;
 
 switch ($action) {
     case 'csv':
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('customers.export', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
     }
 
@@ -43,8 +43,21 @@ switch ($action) {
         ->select('tbl_customers.service_type', 'service_type')
         ->select_expr('SUM(tbl_transactions.price)', 'amount')
         ->group_by('tbl_customers.id')
-        ->order_by_asc('tbl_customers.id')
-        ->find_array();
+        ->order_by_asc('tbl_customers.id');
+    if (!Rbac::hasGlobalDataScope($admin)) {
+        $scopeIds = Rbac::getScopeUserIds($admin);
+        if (empty($scopeIds)) {
+            $scopeIds = [(int) $admin['id']];
+        }
+        if (Rbac::hasColumn('tbl_customers', 'owner_user_id')) {
+            $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
+            $params = array_merge($scopeIds, $scopeIds);
+            $cs->where_raw("(tbl_customers.owner_user_id IN ($placeholders) OR (tbl_customers.owner_user_id IS NULL AND tbl_customers.created_by IN ($placeholders)))", $params);
+        } else {
+            $cs->where_in('tbl_customers.created_by', $scopeIds);
+        }
+    }
+    $cs = $cs->find_array();
 
     set_time_limit(-1);
 
@@ -90,7 +103,7 @@ switch ($action) {
     break;
         //case csv-prepaid can be moved later to (plan.php)  php file dealing with prepaid users
     case 'csv-prepaid':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('customers.export', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
 
@@ -108,8 +121,21 @@ switch ($action) {
             ->select('status')
             ->select('method', 'Payment')
             ->left_outer_join('tbl_user_recharges', array('tbl_customers.id', '=', 'tbl_user_recharges.customer_id'))
-            ->order_by_asc('tbl_customers.id')
-            ->find_array();
+            ->order_by_asc('tbl_customers.id');
+        if (!Rbac::hasGlobalDataScope($admin)) {
+            $scopeIds = Rbac::getScopeUserIds($admin);
+            if (empty($scopeIds)) {
+                $scopeIds = [(int) $admin['id']];
+            }
+            if (Rbac::hasColumn('tbl_customers', 'owner_user_id')) {
+                $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
+                $params = array_merge($scopeIds, $scopeIds);
+                $cs->where_raw("(tbl_customers.owner_user_id IN ($placeholders) OR (tbl_customers.owner_user_id IS NULL AND tbl_customers.created_by IN ($placeholders)))", $params);
+            } else {
+                $cs->where_in('tbl_customers.created_by', $scopeIds);
+            }
+        }
+        $cs = $cs->find_array();
 
         $h = false;
         set_time_limit(-1);
@@ -168,11 +194,14 @@ switch ($action) {
         $ui->display('admin/customers/add.tpl');
         break;
     case 'recharge':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Agent', 'Sales'])) {
+        if (!can('customers.recharge', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $id_customer = $routes['2'];
         $plan_id = $routes['3'];
+        if (!canAccessCustomer($id_customer, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $csrf_token = _req('token');
         if (!Csrf::check($csrf_token)) {
             r2(getUrl('customers/view/') . $id_customer, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
@@ -243,11 +272,14 @@ switch ($action) {
         }
         break;
     case 'deactivate':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('customers.edit', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $id_customer = $routes['2'];
         $plan_id = $routes['3'];
+        if (!canAccessCustomer($id_customer, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $csrf_token = _req('token');
         if (!Csrf::check($csrf_token)) {
             r2(getUrl('customers/view/') . $id_customer, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
@@ -280,6 +312,9 @@ switch ($action) {
         break;
     case 'sync':
         $id_customer = $routes['2'];
+        if (!can('customers.recharge', $admin) || !canAccessCustomer($id_customer, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $csrf_token = _req('token');
         if (!Csrf::check($csrf_token)) {
             r2(getUrl('customers/view/') . $id_customer, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
@@ -312,10 +347,13 @@ switch ($action) {
         r2(getUrl('customers/view/') . $id_customer, 'e', 'Cannot find active plan');
         break;
     case 'login':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('customers.view', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $id = $routes['2'];
+        if (!canAccessCustomer($id, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $csrf_token = _req('token');
         if (!Csrf::check($csrf_token)) {
             r2(getUrl('customers/view/') . $id, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
@@ -331,12 +369,18 @@ switch ($action) {
     case 'viewu':
         $customer = ORM::for_table('tbl_customers')->where('username', $routes['2'])->find_one();
     case 'view':
+        if (!can('customers.view', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $id = $routes['2'];
         run_hook('view_customer'); #HOOK
         if (!$customer) {
             $customer = ORM::for_table('tbl_customers')->find_one($id);
         }
         if ($customer) {
+            if (!canAccessCustomer($customer['id'], $admin)) {
+                _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+            }
             // Fetch the Customers Attributes values from the tbl_customer_custom_fields table
             $customFields = ORM::for_table('tbl_customers_fields')
                 ->where('customer_id', $customer['id'])
@@ -382,10 +426,13 @@ switch ($action) {
         }
         break;
     case 'edit':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('customers.edit', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $id = $routes['2'];
+        if (!canAccessCustomer($id, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         run_hook('edit_customer'); #HOOK
         $d = ORM::for_table('tbl_customers')->find_one($id);
         // Fetch the Customers Attributes values from the tbl_customers_fields table
@@ -422,10 +469,13 @@ switch ($action) {
         break;
 
     case 'delete':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('customers.delete', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $id = $routes['2'];
+        if (!canAccessCustomer($id, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $csrf_token = _req('token');
         if (!Csrf::check($csrf_token)) {
             r2(getUrl('customers/view/') . $id, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
@@ -465,6 +515,9 @@ switch ($action) {
         break;
 
     case 'add-post':
+        if (!can('customers.create', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
 
         $csrf_token = _post('csrf_token');
         if (!Csrf::check($csrf_token)) {
@@ -519,6 +572,9 @@ switch ($action) {
             $d->fullname = $fullname;
             $d->address = $address;
             $d->created_by = $admin['id'];
+            if (Rbac::hasColumn('tbl_customers', 'owner_user_id')) {
+                $d->owner_user_id = $admin['id'];
+            }
             $d->phonenumber = Lang::phoneFormat($phonenumber);
             $d->service_type = $service_type;
             $d->coordinates = $coordinates;
@@ -595,6 +651,9 @@ switch ($action) {
 
     case 'edit-post':
         $id = _post('id');
+        if (!can('customers.edit', $admin) || !canAccessCustomer($id, $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $csrf_token = _post('csrf_token');
         if (!Csrf::check($csrf_token)) {
             r2(getUrl('customers/edit/') . $id, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
@@ -834,6 +893,9 @@ switch ($action) {
         break;
 
     default:
+        if (!can('customers.view', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         run_hook('list_customers'); #HOOK
         $search = _req('search');
         $order = _req('order', 'username');
@@ -849,13 +911,15 @@ switch ($action) {
         $append_url = "&order=" . urlencode($order) . "&filter=" . urlencode($filter) . "&orderby=" . urlencode($orderby);
 
         if ($search != '') {
+            $like = '%' . $search . '%';
             $query = ORM::for_table('tbl_customers')
-                ->whereRaw("username LIKE '%$search%' OR fullname LIKE '%$search%' OR address LIKE '%$search%' " .
-                    "OR phonenumber LIKE '%$search%' OR email LIKE '%$search%' AND status='$filter'");
+                ->where_raw("(username LIKE ? OR fullname LIKE ? OR address LIKE ? OR phonenumber LIKE ? OR email LIKE ?)", [$like, $like, $like, $like, $like])
+                ->where("status", $filter);
         } else {
             $query = ORM::for_table('tbl_customers');
             $query->where("status", $filter);
         }
+        $query = scopeCustomers($query, $admin);
         if ($order == 'lastname') {
             $query->order_by_expr("SUBSTR(fullname, INSTR(fullname, ' ')) $orderby");
         } else {
@@ -866,6 +930,9 @@ switch ($action) {
             }
         }
         if (_post('export', '') == 'csv') {
+            if (!can('customers.export', $admin)) {
+                _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+            }
             $csrf_token = _post('csrf_token');
             if (!Csrf::check($csrf_token)) {
                 r2(getUrl('customers'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");

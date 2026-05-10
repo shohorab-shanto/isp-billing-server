@@ -15,20 +15,20 @@ if ($mode == true) {
 }
 
 
-register_menu(" Internet Speedtest", true, "speedtest", 'AFTER_SETTINGS', 'fa fa-dashboard');
+register_menu(" Internet Speedtest", true, "speedtest", 'AFTER_SETTINGS', 'fa fa-dashboard', '', 'success', [], 'plugins.speedtest.manage');
+register_plugin_route("speedtest", 'plugins.speedtest.manage', true, false);
 
 function speedtest()
 {
   global $ui, $config;
   _admin();
+  if (!can('plugins.speedtest.manage')) {
+    r2(U . 'dashboard', 'e', Lang::T('You do not have permission to access this page'));
+  }
   $ui->assign('_title', 'Speedtest Settings');
   $ui->assign('_system_menu', '');
   $admin = Admin::_info();
   $ui->assign('_admin', $admin);
-  if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
-    _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
-    exit;
-  }
   if (_post('save') == 'save') {
     $status = isset($_POST['speedtest_mode']) ? 1 : 0; // Checkbox returns 1 if checked, otherwise 0
     $template = isset($_POST['speedtest_template']) ? $_POST['speedtest_template'] : null;

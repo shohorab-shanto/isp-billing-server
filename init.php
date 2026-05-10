@@ -91,6 +91,8 @@ if ($isApi) {
     define('U', APP_URL . '/?_route=');
 }
 
+Rbac::boot();
+
 // notification message
 if (file_exists($UPLOAD_PATH . DIRECTORY_SEPARATOR . "notifications.json")) {
     $_notifmsg = json_decode(file_get_contents($UPLOAD_PATH . DIRECTORY_SEPARATOR . 'notifications.json'), true);
@@ -233,6 +235,36 @@ function _admin($login = true)
             return false;
         }
     }
+}
+
+function can($permissionKey, $admin = null)
+{
+    return Rbac::can($permissionKey, $admin);
+}
+
+function canAny($permissionKeys, $admin = null)
+{
+    return Rbac::canAny($permissionKeys, $admin);
+}
+
+function canAll($permissionKeys, $admin = null)
+{
+    return Rbac::canAll($permissionKeys, $admin);
+}
+
+function canAccessCustomer($customerId, $admin = null)
+{
+    return Rbac::canAccessCustomer($customerId, $admin);
+}
+
+function scopeCustomers($query, $admin = null)
+{
+    return Rbac::scopeCustomers($query, $admin);
+}
+
+function getCurrentUserScopeIds($admin = null)
+{
+    return Rbac::getScopeUserIds($admin);
 }
 
 

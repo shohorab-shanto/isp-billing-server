@@ -474,6 +474,9 @@ switch ($action) {
         if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Agent'])) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
+        if (!canAny(['settings.users', 'resellers.create'], $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $search = _req('search');
         if ($search != '') {
             if ($admin['user_type'] == 'SuperAdmin') {
@@ -491,12 +494,11 @@ switch ($action) {
                         ])->order_by_asc('id');
                 $d = Paginator::findMany($query, ['search' => $search]);
             } else {
+                $scopeIds = Rbac::getScopeUserIds($admin);
                 $query = ORM::for_table('tbl_users')
                     ->where_like('username', '%' . $search . '%')
-                    ->where_any_is([
-                        ['id' => $admin['id']],
-                        ['root' => $admin['id']]
-                    ])->order_by_asc('id');
+                    ->where_in('id', $scopeIds)
+                    ->order_by_asc('id');
                 $d = Paginator::findMany($query, ['search' => $search]);
             }
         } else {
@@ -512,11 +514,10 @@ switch ($action) {
                 ])->order_by_asc('id');
                 $d = Paginator::findMany($query);
             } else {
+                $scopeIds = Rbac::getScopeUserIds($admin);
                 $query = ORM::for_table('tbl_users')
-                    ->where_any_is([
-                        ['id' => $admin['id']],
-                        ['root' => $admin['id']]
-                    ])->order_by_asc('id');
+                    ->where_in('id', $scopeIds)
+                    ->order_by_asc('id');
                 $d = Paginator::findMany($query);
             }
         }
@@ -542,14 +543,282 @@ switch ($action) {
         $ui->display('admin/admin/list.tpl');
         break;
 
+    case 'rbac':
+        if (!can('rbac.manage', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+
+        $roles = ORM::for_table('tbl_roles')->order_by_desc('level')->order_by_asc('name')->find_array();
+        $permissions = ORM::for_table('tbl_permissions')->order_by_asc('group_name')->order_by_asc('permission_key')->find_array();
+        $rolePermissions = ORM::for_table('tbl_role_permissions')->find_array();
+        $assigned = [];
+        $permissionGroups = [];
+        $selectedRoleId = (int) _req('role_id');
+        $selectedRole = null;
+
+        foreach ($rolePermissions as $row) {
+            $assigned[$row['role_id']][] = $row['permission_id'];
+        }
+        foreach ($roles as $role) {
+            if (!$selectedRoleId) {
+                $selectedRoleId = (int) $role['id'];
+            }
+            if ((int) $role['id'] == $selectedRoleId) {
+                $selectedRole = $role;
+            }
+        }
+        if (!$selectedRole && count($roles) > 0) {
+            $selectedRole = $roles[0];
+            $selectedRoleId = (int) $selectedRole['id'];
+        }
+        $sectionMap = [
+            'Dashboard' => ['menu.dashboard'],
+            'Customers' => ['menu.customers', 'customers.'],
+            'Services' => ['menu.services', 'services.'],
+            'Internet Plan' => ['menu.internet_plan', 'plans.'],
+            'Maps' => ['menu.maps', 'maps.'],
+            'Reports' => ['menu.reports', 'reports.'],
+            'Send Message' => ['menu.message', 'message.'],
+            'Network' => ['menu.network', 'network.'],
+            'Radius' => ['menu.radius', 'radius.'],
+            'Static Pages' => ['menu.pages', 'pages.'],
+            'Settings' => ['menu.settings', 'settings.', 'rbac.manage'],
+            'Logs' => ['menu.logs', 'logs.'],
+            'Documentation' => ['menu.documentation'],
+            'Community' => ['menu.community'],
+            'Resellers' => ['resellers.'],
+            'Data Scope' => ['data.scope.'],
+            'Plugins' => ['plugins.'],
+        ];
+
+        foreach ($permissions as $permission) {
+            $permissionKey = $permission['permission_key'];
+            $groupName = 'Other';
+            foreach ($sectionMap as $sectionName => $patterns) {
+                foreach ($patterns as $pattern) {
+                    if (substr($pattern, -1) == '.') {
+                        if (strpos($permissionKey, $pattern) === 0) {
+                            $groupName = $sectionName;
+                            break 2;
+                        }
+                    } else if ($permissionKey == $pattern) {
+                        $groupName = $sectionName;
+                        break 2;
+                    }
+                }
+            }
+            if (!isset($permissionGroups[$groupName])) {
+                $permissionGroups[$groupName] = [];
+            }
+            $permissionGroups[$groupName][] = $permission;
+        }
+
+        $orderedGroups = [];
+        foreach (array_keys($sectionMap) as $sectionName) {
+            if (isset($permissionGroups[$sectionName])) {
+                $orderedGroups[$sectionName] = $permissionGroups[$sectionName];
+            }
+        }
+        if (isset($permissionGroups['Other'])) {
+            $orderedGroups['Other'] = $permissionGroups['Other'];
+        }
+        $permissionGroups = $orderedGroups;
+
+        $ui->assign('_title', Lang::T('Roles and Permissions'));
+        $ui->assign('roles', $roles);
+        $ui->assign('permissions', $permissions);
+        $ui->assign('permissionGroups', $permissionGroups);
+        $ui->assign('assigned', $assigned);
+        $ui->assign('selectedRole', $selectedRole);
+        $ui->assign('selectedRoleId', $selectedRoleId);
+        $ui->assign('csrf_token', Csrf::generateAndStoreToken());
+        $ui->display('admin/settings/rbac.tpl');
+        break;
+
+    case 'rbac-save':
+        if (!can('rbac.manage', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        if ($_app_stage == 'Demo') {
+            r2(getUrl('settings/rbac'), 'e', 'You cannot perform this action in Demo mode');
+        }
+        $csrf_token = _post('csrf_token');
+        if (!Csrf::check($csrf_token)) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
+        }
+
+        $roleId = (int) _post('role_id');
+        $role = ORM::for_table('tbl_roles')->find_one($roleId);
+        if (!$role) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Data Not Found'));
+        }
+        if ($role['slug'] == 'superadmin') {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Super Administrator permissions are always allowed'));
+        }
+
+        $permissionIds = isset($_POST['permissions']) ? array_map('intval', (array) $_POST['permissions']) : [];
+        ORM::for_table('tbl_role_permissions')->where('role_id', $roleId)->delete_many();
+        foreach ($permissionIds as $permissionId) {
+            $permission = ORM::for_table('tbl_permissions')->find_one($permissionId);
+            if (!$permission) {
+                continue;
+            }
+            $row = ORM::for_table('tbl_role_permissions')->create();
+            $row->role_id = $roleId;
+            $row->permission_id = $permissionId;
+            $row->save();
+        }
+
+        _log('[' . $admin['username'] . ']: Updated permissions for role ' . $role['name'], $admin['user_type'], $admin['id']);
+        r2(getUrl('settings/rbac'), 's', Lang::T('Settings Saved Successfully'));
+        break;
+
+    case 'rbac-role-post':
+        if (!can('rbac.manage', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        if ($_app_stage == 'Demo') {
+            r2(getUrl('settings/rbac'), 'e', 'You cannot perform this action in Demo mode');
+        }
+        $csrf_token = _post('csrf_token');
+        if (!Csrf::check($csrf_token)) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
+        }
+
+        $name = trim(_post('name'));
+        $slug = strtolower(trim(_post('slug')));
+        $slug = preg_replace('/[^a-z0-9_-]/', '', $slug);
+        $type = trim(_post('type', 'reseller'));
+        $level = (int) _post('level', 0);
+
+        if ($name == '' || $slug == '') {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Name') . ' / Slug is required');
+        }
+        if (ORM::for_table('tbl_roles')->where('slug', $slug)->find_one()) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Data already exist'));
+        }
+
+        $role = ORM::for_table('tbl_roles')->create();
+        $role->name = $name;
+        $role->slug = $slug;
+        $role->type = $type;
+        $role->level = $level;
+        $role->is_system = 0;
+        $role->created_at = date('Y-m-d H:i:s');
+        $role->updated_at = date('Y-m-d H:i:s');
+        $role->save();
+
+        _log('[' . $admin['username'] . ']: Created role ' . $name, $admin['user_type'], $admin['id']);
+        r2(getUrl('settings/rbac'), 's', Lang::T('Created Successfully'));
+        break;
+
+    case 'rbac-role-edit-post':
+        if (!can('rbac.manage', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        if ($_app_stage == 'Demo') {
+            r2(getUrl('settings/rbac'), 'e', 'You cannot perform this action in Demo mode');
+        }
+        $csrf_token = _post('csrf_token');
+        if (!Csrf::check($csrf_token)) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
+        }
+
+        $roleId = (int) _post('role_id');
+        $role = ORM::for_table('tbl_roles')->find_one($roleId);
+        if (!$role) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Data Not Found'));
+        }
+
+        $name = trim(_post('name'));
+        $slug = strtolower(trim(_post('slug')));
+        $slug = preg_replace('/[^a-z0-9_-]/', '', $slug);
+        $type = trim(_post('type', 'reseller'));
+        $level = (int) _post('level', 0);
+
+        if ($name == '' || $slug == '') {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Name') . ' / Slug is required');
+        }
+
+        if ($role['is_system']) {
+            $slug = $role['slug'];
+            $type = $role['type'];
+        } else {
+            $existing = ORM::for_table('tbl_roles')->where('slug', $slug)->find_one();
+            if ($existing && $existing['id'] != $roleId) {
+                r2(getUrl('settings/rbac'), 'e', Lang::T('Data already exist'));
+            }
+        }
+
+        $oldName = $role['name'];
+        $role->name = $name;
+        $role->slug = $slug;
+        $role->type = $type;
+        $role->level = $level;
+        $role->updated_at = date('Y-m-d H:i:s');
+        $role->save();
+
+        _log('[' . $admin['username'] . ']: Updated role ' . $oldName . ' to ' . $name, $admin['user_type'], $admin['id']);
+        r2(getUrl('settings/rbac'), 's', Lang::T('Settings Saved Successfully'));
+        break;
+
+    case 'rbac-role-delete':
+        if (!can('rbac.manage', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        if ($_app_stage == 'Demo') {
+            r2(getUrl('settings/rbac'), 'e', 'You cannot perform this action in Demo mode');
+        }
+        $csrf_token = _req('token');
+        if (!Csrf::check($csrf_token)) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
+        }
+
+        $roleId = (int) $routes['2'];
+        $role = ORM::for_table('tbl_roles')->find_one($roleId);
+        if (!$role) {
+            r2(getUrl('settings/rbac'), 'e', Lang::T('Data Not Found'));
+        }
+        if ($role['is_system']) {
+            r2(getUrl('settings/rbac&role_id=', $roleId), 'e', Lang::T('System roles cannot be deleted'));
+        }
+
+        $assignedUsers = ORM::for_table('tbl_user_roles')->where('role_id', $roleId)->count();
+        if ($assignedUsers > 0) {
+            r2(getUrl('settings/rbac&role_id=', $roleId), 'e', Lang::T('Assigned roles cannot be deleted. Remove this role from users first.'));
+        }
+
+        $roleName = $role['name'];
+        ORM::for_table('tbl_role_permissions')->where('role_id', $roleId)->delete_many();
+        ORM::for_table('tbl_user_roles')->where('role_id', $roleId)->delete_many();
+        $role->delete();
+
+        _log('[' . $admin['username'] . ']: Deleted role ' . $roleName, $admin['user_type'], $admin['id']);
+        r2(getUrl('settings/rbac'), 's', Lang::T('Deleted Successfully'));
+        break;
+
     case 'users-add':
         if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Agent'])) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        if (!canAny(['settings.users', 'resellers.create'], $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $csrf_token = Csrf::generateAndStoreToken();
         $ui->assign('csrf_token', $csrf_token);
         $ui->assign('_title', Lang::T('Add User'));
         $ui->assign('agents', ORM::for_table('tbl_users')->where('user_type', 'Agent')->find_many());
+        $ui->assign('roles', Rbac::getAssignableRoles($admin));
+        if (in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            $parentUsers = ORM::for_table('tbl_users')->where_in('user_type', ['SuperAdmin', 'Admin', 'Agent', 'Sales'])->order_by_asc('username')->find_many();
+        } else {
+            $parentUsers = ORM::for_table('tbl_users')->where('id', $admin['id'])->find_many();
+        }
+        $ui->assign('parentUsers', $parentUsers);
+        $ui->assign('canAssignAdvancedRole', in_array($admin['user_type'], ['SuperAdmin', 'Admin']) || can('resellers.create', $admin));
+        $ui->assign('canCreateReseller', Rbac::canCreateReseller($admin));
+        $ui->assign('maxResellerDepth', Rbac::getMaxResellerDepth());
+        $ui->assign('nextResellerLevel', ((int) $admin['reseller_level']) + 1);
         $ui->display('admin/admin/add.tpl');
         break;
     case 'users-view':
@@ -593,6 +862,9 @@ switch ($action) {
         if (empty($id)) {
             $id = $admin['id'];
         }
+        if ($admin['id'] != $id && !canAny(['settings.users', 'resellers.create'], $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         if ($admin['id'] == $id) {
             $d = ORM::for_table('tbl_users')->find_one($id);
         } else {
@@ -609,7 +881,7 @@ switch ($action) {
             } else {
                 // Agent cannot move Sales to other Agent
                 $ui->assign('agents', ORM::for_table('tbl_users')->where('id', $admin['id'])->find_many());
-                $d = ORM::for_table('tbl_users')->where('root', $admin['id'])->find_one($id);
+                $d = Rbac::canAccessAdminUser($id, $admin) ? ORM::for_table('tbl_users')->find_one($id) : false;
             }
         }
         if ($d) {
@@ -632,6 +904,18 @@ switch ($action) {
             }
             $ui->assign('id', $id);
             $ui->assign('d', $d);
+            $ui->assign('roles', Rbac::getAssignableRoles($admin));
+            $ui->assign('current_role_id', Rbac::getUserRoleId($id));
+            if (in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+                $parentUsers = ORM::for_table('tbl_users')->where_not_equal('id', $id)->where_in('user_type', ['SuperAdmin', 'Admin', 'Agent', 'Sales'])->order_by_asc('username')->find_many();
+            } else {
+                $parentUsers = ORM::for_table('tbl_users')->where('id', $admin['id'])->find_many();
+            }
+            $ui->assign('parentUsers', $parentUsers);
+            $ui->assign('canAssignAdvancedRole', in_array($admin['user_type'], ['SuperAdmin', 'Admin']) || can('resellers.create', $admin));
+            $ui->assign('canCreateReseller', Rbac::canCreateReseller($admin));
+            $ui->assign('maxResellerDepth', Rbac::getMaxResellerDepth());
+            $ui->assign('nextResellerLevel', ((int) $admin['reseller_level']) + 1);
             run_hook('view_edit_admin'); #HOOK
             $csrf_token = Csrf::generateAndStoreToken();
             $ui->assign('csrf_token', $csrf_token);
@@ -643,6 +927,9 @@ switch ($action) {
 
     case 'users-delete':
         if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        if (!can('settings.users', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         if ($_app_stage == 'Demo') {
@@ -666,6 +953,9 @@ switch ($action) {
         if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Agent'])) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
+        if (!canAny(['settings.users', 'resellers.create'], $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         if ($_app_stage == 'Demo') {
             r2(getUrl('settings/users-add'), 'e', 'You cannot perform this action in Demo mode');
         }
@@ -684,6 +974,18 @@ switch ($action) {
         $ward = _post('ward');
         $send_notif = _post('send_notif');
         $root = _post('root');
+        $role_id = (int) _post('role_id');
+        $parent_id = (int) _post('parent_id');
+        $reseller_level = (int) _post('reseller_level');
+        $role = $role_id ? Rbac::getRole($role_id) : null;
+        $isResellerCreate = $role ? ($role['type'] == 'reseller') : ($user_type == 'Agent');
+        if ($role && $role['type'] == 'reseller') {
+            $user_type = 'Agent';
+            $isResellerCreate = true;
+        } else if ($role && $role['type'] != 'reseller') {
+            $parent_id = 0;
+            $reseller_level = 0;
+        }
         $msg = '';
         if (Validator::Length($username, 45, 2) == false) {
             $msg .= Lang::T('Username should be between 3 to 45 characters') . '<br>';
@@ -698,6 +1000,38 @@ switch ($action) {
         $d = ORM::for_table('tbl_users')->where('username', $username)->find_one();
         if ($d) {
             $msg .= Lang::T('Account already axist') . '<br>';
+        }
+        if ($role_id && !$role) {
+            $msg .= Lang::T('Role') . ' ' . Lang::T('Data Not Found') . '<br>';
+        }
+        if ($role_id && !Rbac::canAssignRole($role_id, $admin)) {
+            $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+        }
+        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && $isResellerCreate) {
+            if (!$role_id || !$role || $role['type'] != 'reseller' || !Rbac::canCreateReseller($admin)) {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+            $user_type = 'Agent';
+            $parent_id = (int) $admin['id'];
+            $reseller_level = ((int) $admin['reseller_level']) + 1;
+        } else if (!can('settings.users', $admin)) {
+            if (!$isResellerCreate || !$role_id || !$role || $role['type'] != 'reseller') {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+            if (!Rbac::canCreateReseller($admin)) {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+            $user_type = 'Agent';
+            $parent_id = (int) $admin['id'];
+            $reseller_level = ((int) $admin['reseller_level']) + 1;
+        }
+        if ($isResellerCreate && !in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            if ($reseller_level > Rbac::getMaxResellerDepth()) {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+        }
+        if ($parent_id && !Rbac::canAssignParent($parent_id, $admin)) {
+            $msg .= Lang::T('You do not have permission to access this page') . '<br>';
         }
         $date_now = date("Y-m-d H:i:s");
         run_hook('add_admin'); #HOOK
@@ -718,10 +1052,31 @@ switch ($action) {
             if ($admin['user_type'] == 'Agent') {
                 // Prevent hacking from form
                 $d->root = $admin['id'];
+                $d->parent_id = $admin['id'];
             } else if ($user_type == 'Sales') {
                 $d->root = $root;
             }
+            if ($parent_id && in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+                $d->parent_id = $parent_id;
+            }
+            if ($parent_id && !in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && can('resellers.create', $admin)) {
+                $d->parent_id = $parent_id;
+            }
+            if ($reseller_level >= 0 && in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+                $d->reseller_level = $reseller_level;
+            }
+            if ($reseller_level >= 0 && !in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && can('resellers.create', $admin)) {
+                $d->reseller_level = $reseller_level;
+            }
             $d->save();
+            if (!$role_id) {
+                $legacyRole = ORM::for_table('tbl_roles')->where('slug', strtolower($user_type))->find_one();
+                $role_id = $legacyRole ? (int) $legacyRole['id'] : 0;
+            }
+            if ($role_id) {
+                Rbac::setUserRole($d->id(), $role_id);
+            }
+            Rbac::syncUserHierarchy($d->id(), $d['parent_id']);
 
             if ($send_notif == 'wa') {
                 Message::sendWhatsapp(Lang::phoneFormat($phone), Lang::T('Hello, Your account has been created successfully.') . "\nUsername: $username\nPassword: $password\n\n" . $config['CompanyName']);
@@ -756,6 +1111,9 @@ switch ($action) {
         $ward = _post('ward');
         $status = _post('status');
         $root = _post('root');
+        $role_id = (int) _post('role_id');
+        $parent_id = (int) _post('parent_id');
+        $reseller_level = (int) _post('reseller_level');
         $msg = '';
         if (Validator::Length($username, 45, 2) == false) {
             $msg .= Lang::T('Username should be between 3 to 45 characters') . '<br>';
@@ -773,6 +1131,9 @@ switch ($action) {
         }
 
         $id = _post('id');
+        if ($admin['id'] != $id && !canAny(['settings.users', 'resellers.create'], $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         if ($admin['id'] == $id) {
             $d = ORM::for_table('tbl_users')->find_one($id);
         } else {
@@ -785,18 +1146,61 @@ switch ($action) {
                     ['user_type' => 'Sales']
                 ])->find_one($id);
             } else {
-                $d = ORM::for_table('tbl_users')->where('root', $admin['id'])->find_one($id);
+                $d = Rbac::canAccessAdminUser($id, $admin) ? ORM::for_table('tbl_users')->find_one($id) : false;
             }
         }
         if (!$d) {
             $msg .= Lang::T('Data Not Found') . '<br>';
         }
 
-        if ($d['username'] != $username) {
+        if ($d && $d['username'] != $username) {
             $c = ORM::for_table('tbl_users')->where('username', $username)->find_one();
             if ($c) {
                 $msg .= "<b>$username</b> " . Lang::T('Account already axist') . '<br>';
             }
+        }
+        $role = $role_id ? Rbac::getRole($role_id) : null;
+        $isResellerEdit = $role ? ($role['type'] == 'reseller') : ($user_type == 'Agent');
+        if ($role && $role['type'] == 'reseller') {
+            $user_type = 'Agent';
+            $isResellerEdit = true;
+        } else if ($role && $role['type'] != 'reseller') {
+            $parent_id = 0;
+            $reseller_level = 0;
+        }
+        if ($role_id && !$role) {
+            $msg .= Lang::T('Role') . ' ' . Lang::T('Data Not Found') . '<br>';
+        }
+        if ($role_id && !Rbac::canAssignRole($role_id, $admin)) {
+            $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+        }
+        if ($admin['id'] != $id && !in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            if ($isResellerEdit && (!$role_id || !$role || $role['type'] != 'reseller')) {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+            if (!$isResellerEdit && !can('settings.users', $admin)) {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+            if (!Rbac::canAccessAdminUser($id, $admin)) {
+                $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+            }
+            if ($isResellerEdit && $d) {
+                $user_type = 'Agent';
+                $parent_id = (int) $admin['id'];
+                $reseller_level = max((int) $d['reseller_level'], ((int) $admin['reseller_level']) + 1);
+            }
+        }
+        if ($parent_id && $parent_id == $id) {
+            $msg .= Lang::T('Parent') . ' ' . Lang::T('Data Not Found') . '<br>';
+        }
+        if ($parent_id && Rbac::wouldCreateHierarchyCycle($id, $parent_id)) {
+            $msg .= Lang::T('Parent') . ' ' . Lang::T('Data Not Found') . '<br>';
+        }
+        if ($parent_id && !Rbac::canAssignParent($parent_id, $admin)) {
+            $msg .= Lang::T('You do not have permission to access this page') . '<br>';
+        }
+        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && $reseller_level > Rbac::getMaxResellerDepth()) {
+            $msg .= Lang::T('You do not have permission to access this page') . '<br>';
         }
         run_hook('edit_admin'); #HOOK
         if ($msg == '') {
@@ -858,7 +1262,6 @@ switch ($action) {
 
             $d->fullname = $fullname;
             if (($admin['id']) != $id) {
-                $user_type = _post('user_type');
                 $d->user_type = $user_type;
             }
             $d->phone = $phone;
@@ -873,11 +1276,28 @@ switch ($action) {
             if ($admin['user_type'] == 'Agent') {
                 // Prevent hacking from form
                 $d->root = $admin['id'];
+                $d->parent_id = $admin['id'];
             } else if ($user_type == 'Sales') {
                 $d->root = $root;
             }
+            if (($admin['id']) != $id && in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+                $d->parent_id = $parent_id ?: null;
+                $d->reseller_level = $reseller_level;
+            }
+            if (($admin['id']) != $id && !in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && can('resellers.create', $admin)) {
+                $d->parent_id = $parent_id ?: $admin['id'];
+                $d->reseller_level = $reseller_level;
+            }
 
             $d->save();
+            if (!$role_id) {
+                $legacyRole = ORM::for_table('tbl_roles')->where('slug', strtolower($user_type))->find_one();
+                $role_id = $legacyRole ? (int) $legacyRole['id'] : 0;
+            }
+            if (($admin['id']) != $id && $role_id) {
+                Rbac::setUserRole($id, $role_id);
+            }
+            Rbac::syncUserHierarchy($id, $d['parent_id']);
 
             _log('[' . $admin['username'] . ']: $username ' . Lang::T('User Updated Successfully'), $admin['user_type'], $admin['id']);
             r2(getUrl('settings/users-view/') . $id, 's', 'User Updated Successfully');

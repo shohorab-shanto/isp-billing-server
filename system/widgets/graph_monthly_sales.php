@@ -5,15 +5,17 @@ class graph_monthly_sales
     public function getWidget()
     {
         global $CACHE_PATH, $ui;
+        $admin = Admin::_info();
+        $cacheSuffix = (!empty($admin) && !Rbac::hasGlobalDataScope($admin)) ? ('_' . (int) $admin['id']) : '';
 
 
-        $cacheMSfile = $CACHE_PATH . File::pathFixer('/monthlySales.temp');
+        $cacheMSfile = $CACHE_PATH . File::pathFixer('/monthlySales' . $cacheSuffix . '.temp');
         //Cache for 12 hours
         if (file_exists($cacheMSfile) && time() - filemtime($cacheMSfile) < 43200) {
             $monthlySales = json_decode(file_get_contents($cacheMSfile), true);
         } else {
             // Query to retrieve monthly data
-            $results = ORM::for_table('tbl_transactions')
+            $results = Rbac::scopeOwned(ORM::for_table('tbl_transactions'), 'tbl_transactions', $admin)
                 ->select_expr('MONTH(recharged_on)', 'month')
                 ->select_expr('SUM(price)', 'total')
                 ->where_raw("YEAR(recharged_on) = YEAR(CURRENT_DATE())") // Filter by the current year

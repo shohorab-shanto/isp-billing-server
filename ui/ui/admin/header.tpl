@@ -112,21 +112,25 @@
         <aside class="main-sidebar">
             <section class="sidebar">
                 <ul class="sidebar-menu" data-widget="tree">
-                    <li {if $_system_menu eq 'dashboard' }class="active" {/if}>
-                        <a href="{Text::url('dashboard')}">
-                            <i class="ion ion-monitor"></i>
-                            <span>{Lang::T('Dashboard')}</span>
-                        </a>
-                    </li>
+                    {if can('menu.dashboard', $_admin)}
+                        <li {if $_system_menu eq 'dashboard' }class="active" {/if}>
+                            <a href="{Text::url('dashboard')}">
+                                <i class="ion ion-monitor"></i>
+                                <span>{Lang::T('Dashboard')}</span>
+                            </a>
+                        </li>
+                    {/if}
                     {$_MENU_AFTER_DASHBOARD}
-                    <li {if $_system_menu eq 'customers' }class="active" {/if}>
-                        <a href="{Text::url('customers')}">
-                            <i class="fa fa-user"></i>
-                            <span>{Lang::T('Customer')}</span>
-                        </a>
-                    </li>
+                    {if can('menu.customers', $_admin)}
+                        <li {if $_system_menu eq 'customers' }class="active" {/if}>
+                            <a href="{Text::url('customers')}">
+                                <i class="fa fa-user"></i>
+                                <span>{Lang::T('Customer')}</span>
+                            </a>
+                        </li>
+                    {/if}
                     {$_MENU_AFTER_CUSTOMERS}
-                    {if !in_array($_admin['user_type'],['Report'])}
+                    {if can('menu.services', $_admin)}
                         <li class="{if $_routes[0] eq 'plan' || $_routes[0] eq 'coupons'}active{/if} treeview">
                             <a href="#">
                                 <i class="fa fa-ticket"></i> <span>{Lang::T('Services')}</span>
@@ -135,32 +139,44 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li {if $_routes[1] eq 'list' }class="active" {/if}><a
-                                        href="{Text::url('plan/list')}">{Lang::T('Active Customers')}</a></li>
-                                {if $_c['disable_voucher'] != 'yes'}
-                                    <li {if $_routes[1] eq 'refill' }class="active" {/if}><a
-                                            href="{Text::url('plan/refill')}">{Lang::T('Refill Customer')}</a></li>
+                                {if can('services.active_customers', $_admin)}
+                                    <li {if $_routes[1] eq 'list' }class="active" {/if}><a
+                                            href="{Text::url('plan/list')}">{Lang::T('Active Customers')}</a></li>
                                 {/if}
                                 {if $_c['disable_voucher'] != 'yes'}
-                                    <li {if $_routes[1] eq 'voucher' }class="active" {/if}><a
-                                            href="{Text::url('plan/voucher')}">{Lang::T('Vouchers')}</a></li>
+                                    {if can('services.refill', $_admin)}
+                                        <li {if $_routes[1] eq 'refill' }class="active" {/if}><a
+                                                href="{Text::url('plan/refill')}">{Lang::T('Refill Customer')}</a></li>
+                                    {/if}
+                                {/if}
+                                {if $_c['disable_voucher'] != 'yes'}
+                                    {if can('services.vouchers', $_admin)}
+                                        <li {if $_routes[1] eq 'voucher' }class="active" {/if}><a
+                                                href="{Text::url('plan/voucher')}">{Lang::T('Vouchers')}</a></li>
+                                    {/if}
                                 {/if}
                                 {if $_c['enable_coupons'] == 'yes'}
-                                    <li {if $_routes[0] eq 'coupons' }class="active" {/if}><a
-                                            href="{Text::url('coupons')}">{Lang::T('Coupons')}</a></li>
+                                    {if can('services.coupons', $_admin)}
+                                        <li {if $_routes[0] eq 'coupons' }class="active" {/if}><a
+                                                href="{Text::url('coupons')}">{Lang::T('Coupons')}</a></li>
+                                    {/if}
                                 {/if}
-                                <li {if $_routes[1] eq 'recharge' }class="active" {/if}><a
-                                        href="{Text::url('plan/recharge')}">{Lang::T('Recharge Customer')}</a></li>
+                                {if can('services.recharge', $_admin)}
+                                    <li {if $_routes[1] eq 'recharge' }class="active" {/if}><a
+                                            href="{Text::url('plan/recharge')}">{Lang::T('Recharge Customer')}</a></li>
+                                {/if}
                                 {if $_c['enable_balance'] == 'yes'}
-                                    <li {if $_routes[1] eq 'deposit' }class="active" {/if}><a
-                                            href="{Text::url('plan/deposit')}">{Lang::T('Refill Balance')}</a></li>
+                                    {if can('services.deposit', $_admin)}
+                                        <li {if $_routes[1] eq 'deposit' }class="active" {/if}><a
+                                                href="{Text::url('plan/deposit')}">{Lang::T('Refill Balance')}</a></li>
+                                    {/if}
                                 {/if}
                                 {$_MENU_SERVICES}
                             </ul>
                         </li>
                     {/if}
                     {$_MENU_AFTER_SERVICES}
-                    {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                    {if can('menu.internet_plan', $_admin)}
                         <li class="{if $_system_menu eq 'services'}active{/if} treeview">
                             <a href="#">
                                 <i class="ion ion-cube"></i> <span>{Lang::T('Internet Plan')}</span>
@@ -169,23 +185,34 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li {if $_routes[1] eq 'hotspot' }class="active" {/if}><a
-                                        href="{Text::url('services/hotspot')}">Hotspot</a></li>
-                                <li {if $_routes[1] eq 'pppoe' }class="active" {/if}><a
-                                        href="{Text::url('services/pppoe')}">PPPOE</a></li>
-                                <li {if $_routes[1] eq 'vpn' }class="active" {/if}><a href="{Text::url('services/vpn')}">VPN</a>
-                                </li>
-                                <li {if $_routes[1] eq 'list' }class="active" {/if}><a
-                                        href="{Text::url('bandwidth/list')}">Bandwidth</a></li>
+                                {if can('plans.hotspot', $_admin)}
+                                    <li {if $_routes[1] eq 'hotspot' }class="active" {/if}><a
+                                            href="{Text::url('services/hotspot')}">Hotspot</a></li>
+                                {/if}
+                                {if can('plans.pppoe', $_admin)}
+                                    <li {if $_routes[1] eq 'pppoe' }class="active" {/if}><a
+                                            href="{Text::url('services/pppoe')}">PPPOE</a></li>
+                                {/if}
+                                {if can('plans.vpn', $_admin)}
+                                    <li {if $_routes[1] eq 'vpn' }class="active" {/if}><a href="{Text::url('services/vpn')}">VPN</a>
+                                    </li>
+                                {/if}
+                                {if can('plans.bandwidth', $_admin)}
+                                    <li {if $_routes[1] eq 'list' }class="active" {/if}><a
+                                            href="{Text::url('bandwidth/list')}">Bandwidth</a></li>
+                                {/if}
                                 {if $_c['enable_balance'] == 'yes'}
-                                    <li {if $_routes[1] eq 'balance' }class="active" {/if}><a
-                                            href="{Text::url('services/balance')}">{Lang::T('Customer Balance')}</a></li>
+                                    {if can('plans.balance', $_admin)}
+                                        <li {if $_routes[1] eq 'balance' }class="active" {/if}><a
+                                                href="{Text::url('services/balance')}">{Lang::T('Customer Balance')}</a></li>
+                                    {/if}
                                 {/if}
                                 {$_MENU_PLANS}
                             </ul>
                         </li>
                     {/if}
                     {$_MENU_AFTER_PLANS}
+                    {if can('menu.maps', $_admin)}
                     <li class="{if in_array($_routes[0], ['maps'])}active{/if} treeview">
                         <a href="#">
                             <i class="fa fa-map-marker"></i> <span>{Lang::T('Maps')}</span>
@@ -194,33 +221,45 @@
                             </span>
                         </a>
                         <ul class="treeview-menu">
-                            <li {if $_routes[1] eq 'customer' }class="active" {/if}><a
-                                    href="{Text::url('maps/customer')}">{Lang::T('Customer')}</a></li>
-                            <li {if $_routes[1] eq 'routers' }class="active" {/if}><a
-                                    href="{Text::url('maps/routers')}">{Lang::T('Routers')}</a></li>
-                            <li {if $_routes[1] eq 'odp' }class="active" {/if}><a
-                                    href="{Text::url('maps/odp')}">{Lang::T('ODPs')}</a></li>
+                            {if can('maps.customer', $_admin)}
+                                <li {if $_routes[1] eq 'customer' }class="active" {/if}><a
+                                        href="{Text::url('maps/customer')}">{Lang::T('Customer')}</a></li>
+                            {/if}
+                            {if can('maps.routers', $_admin)}
+                                <li {if $_routes[1] eq 'routers' }class="active" {/if}><a
+                                        href="{Text::url('maps/routers')}">{Lang::T('Routers')}</a></li>
+                            {/if}
+                            {if can('maps.odp', $_admin)}
+                                <li {if $_routes[1] eq 'odp' }class="active" {/if}><a
+                                        href="{Text::url('maps/odp')}">{Lang::T('ODPs')}</a></li>
+                            {/if}
                             {$_MENU_MAPS}
                         </ul>
                     </li>
+                    {/if}
+                    {if can('menu.reports', $_admin)}
                     <li class="{if $_system_menu eq 'reports'}active{/if} treeview">
-                        {if in_array($_admin['user_type'],['SuperAdmin','Admin', 'Report'])}
                             <a href="#">
                                 <i class="ion ion-clipboard"></i> <span>{Lang::T('Reports')}</span>
                                 <span class="pull-right-container">
                                     <i class="fa fa-angle-left pull-right"></i>
                                 </span>
                             </a>
-                        {/if}
                         <ul class="treeview-menu">
-                            <li {if $_routes[1] eq 'reports' }class="active" {/if}><a
-                                    href="{Text::url('reports')}">{Lang::T('Daily Reports')}</a></li>
-                            <li {if $_routes[1] eq 'activation' }class="active" {/if}><a
-                                    href="{Text::url('reports/activation')}">{Lang::T('Activation History')}</a></li>
+                            {if can('reports.daily', $_admin)}
+                                <li {if $_routes[1] eq 'reports' }class="active" {/if}><a
+                                        href="{Text::url('reports')}">{Lang::T('Daily Reports')}</a></li>
+                            {/if}
+                            {if can('reports.activation', $_admin)}
+                                <li {if $_routes[1] eq 'activation' }class="active" {/if}><a
+                                        href="{Text::url('reports/activation')}">{Lang::T('Activation History')}</a></li>
+                            {/if}
                             {$_MENU_REPORTS}
                         </ul>
                     </li>
+                    {/if}
                     {$_MENU_AFTER_REPORTS}
+                    {if can('menu.message', $_admin)}
                     <li class="{if $_system_menu eq 'message'}active{/if} treeview">
                         <a href="#">
                             <i class="ion ion-android-chat"></i> <span>{Lang::T('Send Message')}</span>
@@ -229,15 +268,20 @@
                             </span>
                         </a>
                         <ul class="treeview-menu">
-                            <li {if $_routes[1] eq 'send' }class="active" {/if}><a
-                                    href="{Text::url('message/send')}">{Lang::T('Single Customer')}</a></li>
-                            <li {if $_routes[1] eq 'send_bulk' }class="active" {/if}><a
-                                    href="{Text::url('message/send_bulk')}">{Lang::T('Bulk Customers')}</a></li>
+                            {if can('message.single', $_admin)}
+                                <li {if $_routes[1] eq 'send' }class="active" {/if}><a
+                                        href="{Text::url('message/send')}">{Lang::T('Single Customer')}</a></li>
+                            {/if}
+                            {if can('message.bulk', $_admin)}
+                                <li {if $_routes[1] eq 'send_bulk' }class="active" {/if}><a
+                                        href="{Text::url('message/send_bulk')}">{Lang::T('Bulk Customers')}</a></li>
+                            {/if}
                             {$_MENU_MESSAGE}
                         </ul>
                     </li>
+                    {/if}
                     {$_MENU_AFTER_MESSAGE}
-                    {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                    {if can('menu.network', $_admin)}
                         <li class="{if $_system_menu eq 'network'}active{/if} treeview">
                             <a href="#">
                                 <i class="ion ion-network"></i> <span>{Lang::T('Network')}</span>
@@ -246,18 +290,28 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li {if $_routes[0] eq 'routers' and $_routes[1] eq '' }class="active" {/if}><a
-                                        href="{Text::url('routers')}">Routers</a></li>
-                                <li {if $_routes[0] eq 'pool' and $_routes[1] eq 'list' }class="active" {/if}><a
-                                        href="{Text::url('pool/list')}">IP Pool</a></li>
-                                <li {if $_routes[0] eq 'pool' and $_routes[1] eq 'port' }class="active" {/if}><a
-                                        href="{Text::url('pool/port')}">Port Pool</a></li>
-                                <li {if $_routes[0] eq 'odp' and $_routes[1] eq '' }class="active" {/if}><a
-                                        href="{Text::url('odp')}">ODP List</a></li>
+                                {if can('network.routers', $_admin)}
+                                    <li {if $_routes[0] eq 'routers' and $_routes[1] eq '' }class="active" {/if}><a
+                                            href="{Text::url('routers')}">Routers</a></li>
+                                {/if}
+                                {if can('network.pool', $_admin)}
+                                    <li {if $_routes[0] eq 'pool' and $_routes[1] eq 'list' }class="active" {/if}><a
+                                            href="{Text::url('pool/list')}">IP Pool</a></li>
+                                {/if}
+                                {if can('network.port_pool', $_admin)}
+                                    <li {if $_routes[0] eq 'pool' and $_routes[1] eq 'port' }class="active" {/if}><a
+                                            href="{Text::url('pool/port')}">Port Pool</a></li>
+                                {/if}
+                                {if can('network.odp', $_admin)}
+                                    <li {if $_routes[0] eq 'odp' and $_routes[1] eq '' }class="active" {/if}><a
+                                            href="{Text::url('odp')}">ODP List</a></li>
+                                {/if}
                                 {$_MENU_NETWORK}
                             </ul>
                         </li>
                         {$_MENU_AFTER_NETWORKS}
+                    {/if}
+                    {if can('menu.radius', $_admin)}
                         {if $_c['radius_enable']}
                             <li class="{if $_system_menu eq 'radius'}active{/if} treeview">
                                 <a href="#">
@@ -267,13 +321,17 @@
                                     </span>
                                 </a>
                                 <ul class="treeview-menu">
-                                    <li {if $_routes[0] eq 'radius' and $_routes[1] eq 'nas-list' }class="active" {/if}><a
-                                            href="{Text::url('radius/nas-list')}">{Lang::T('Radius NAS')}</a></li>
+                                    {if can('radius.nas', $_admin)}
+                                        <li {if $_routes[0] eq 'radius' and $_routes[1] eq 'nas-list' }class="active" {/if}><a
+                                                href="{Text::url('radius/nas-list')}">{Lang::T('Radius NAS')}</a></li>
+                                    {/if}
                                     {$_MENU_RADIUS}
                                 </ul>
                             </li>
                         {/if}
                         {$_MENU_AFTER_RADIUS}
+                    {/if}
+                    {if can('menu.pages', $_admin)}
                         <li class="{if $_system_menu eq 'pages'}active{/if} treeview">
                             <a href="#">
                                 <i class="ion ion-document"></i> <span>{Lang::T("Static Pages")}</span>
@@ -282,28 +340,45 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li {if $_routes[1] eq 'Order_Voucher' }class="active" {/if}><a
-                                        href="{Text::url('pages/Order_Voucher')}">{Lang::T('Order Voucher')}</a></li>
-                                <li {if $_routes[1] eq 'Voucher' }class="active" {/if}><a
-                                        href="{Text::url('pages/Voucher')}">{Lang::T('Theme Voucher')}</a></li>
-                                <li {if $_routes[1] eq 'Announcement' }class="active" {/if}><a
-                                        href="{Text::url('pages/Announcement')}">{Lang::T('Announcement')}</a></li>
-                                <li {if $_routes[1] eq 'Announcement_Customer' }class="active" {/if}><a
-                                        href="{Text::url('pages/Announcement_Customer')}">{Lang::T('Customer Announcement')}</a>
-                                </li>
-                                <li {if $_routes[1] eq 'Registration_Info' }class="active" {/if}><a
-                                        href="{Text::url('pages/Registration_Info')}">{Lang::T('Registration Info')}</a></li>
-                                <li {if $_routes[1] eq 'Payment_Info' }class="active" {/if}><a
-                                        href="{Text::url('pages/Payment_Info')}">{Lang::T('Payment Info')}</a></li>
-                                <li {if $_routes[1] eq 'Privacy_Policy' }class="active" {/if}><a
-                                        href="{Text::url('pages/Privacy_Policy')}">{Lang::T('Privacy Policy')}</a></li>
-                                <li {if $_routes[1] eq 'Terms_and_Conditions' }class="active" {/if}><a
-                                        href="{Text::url('pages/Terms_and_Conditions')}">{Lang::T('Terms and Conditions')}</a></li>
+                                {if can('pages.order_voucher', $_admin)}
+                                    <li {if $_routes[1] eq 'Order_Voucher' }class="active" {/if}><a
+                                            href="{Text::url('pages/Order_Voucher')}">{Lang::T('Order Voucher')}</a></li>
+                                {/if}
+                                {if can('pages.voucher', $_admin)}
+                                    <li {if $_routes[1] eq 'Voucher' }class="active" {/if}><a
+                                            href="{Text::url('pages/Voucher')}">{Lang::T('Theme Voucher')}</a></li>
+                                {/if}
+                                {if can('pages.announcement', $_admin)}
+                                    <li {if $_routes[1] eq 'Announcement' }class="active" {/if}><a
+                                            href="{Text::url('pages/Announcement')}">{Lang::T('Announcement')}</a></li>
+                                {/if}
+                                {if can('pages.customer_announcement', $_admin)}
+                                    <li {if $_routes[1] eq 'Announcement_Customer' }class="active" {/if}><a
+                                            href="{Text::url('pages/Announcement_Customer')}">{Lang::T('Customer Announcement')}</a>
+                                    </li>
+                                {/if}
+                                {if can('pages.registration_info', $_admin)}
+                                    <li {if $_routes[1] eq 'Registration_Info' }class="active" {/if}><a
+                                            href="{Text::url('pages/Registration_Info')}">{Lang::T('Registration Info')}</a></li>
+                                {/if}
+                                {if can('pages.payment_info', $_admin)}
+                                    <li {if $_routes[1] eq 'Payment_Info' }class="active" {/if}><a
+                                            href="{Text::url('pages/Payment_Info')}">{Lang::T('Payment Info')}</a></li>
+                                {/if}
+                                {if can('pages.privacy_policy', $_admin)}
+                                    <li {if $_routes[1] eq 'Privacy_Policy' }class="active" {/if}><a
+                                            href="{Text::url('pages/Privacy_Policy')}">{Lang::T('Privacy Policy')}</a></li>
+                                {/if}
+                                {if can('pages.terms', $_admin)}
+                                    <li {if $_routes[1] eq 'Terms_and_Conditions' }class="active" {/if}><a
+                                            href="{Text::url('pages/Terms_and_Conditions')}">{Lang::T('Terms and Conditions')}</a></li>
+                                {/if}
                                 {$_MENU_PAGES}
                             </ul>
                         </li>
                     {/if}
                     {$_MENU_AFTER_PAGES}
+                    {if can('menu.settings', $_admin)}
                     <li
                         class="{if $_system_menu eq 'settings' || $_system_menu eq 'paymentgateway' }active{/if} treeview">
                         <a href="#">
@@ -313,7 +388,7 @@
                             </span>
                         </a>
                         <ul class="treeview-menu">
-                            {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                            {if can('settings.general', $_admin)}
                                 <li {if $_routes[1] eq 'app' }class="active" {/if}><a
                                         href="{Text::url('settings/app')}">{Lang::T('General Settings')}</a></li>
                                 <li {if $_routes[1] eq 'localisation' }class="active" {/if}><a
@@ -330,29 +405,40 @@
                                         href="{Text::url('settings/notifications')}">{Lang::T('User Notification')}</a></li>
                                 <li {if $_routes[1] eq 'devices' }class="active" {/if}><a
                                         href="{Text::url('settings/devices')}">{Lang::T('Devices')}</a></li>
+                                {if can('rbac.manage', $_admin)}
+                                    <li {if $_routes[1] eq 'rbac' }class="active" {/if}><a
+                                            href="{Text::url('settings/rbac')}">{Lang::T('Roles and Permissions')}</a></li>
+                                {/if}
                             {/if}
-                            {if in_array($_admin['user_type'],['SuperAdmin','Admin','Agent'])}
+                            {if can('settings.users', $_admin)}
                                 <li {if $_routes[1] eq 'users' }class="active" {/if}><a
                                         href="{Text::url('settings/users')}">{Lang::T('Administrator Users')}</a></li>
                             {/if}
-                            {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                            {if can('settings.backup', $_admin) || can('settings.payment_gateway', $_admin) || can('settings.plugin_manager', $_admin)}
+                                {if can('settings.backup', $_admin)}
                                 <li {if $_routes[1] eq 'dbstatus' }class="active" {/if}><a
                                         href="{Text::url('settings/dbstatus')}">{Lang::T('Backup/Restore')}</a></li>
+                                {/if}
+                                {if can('settings.payment_gateway', $_admin)}
                                 <li {if $_system_menu eq 'paymentgateway' }class="active" {/if}>
                                     <a href="{Text::url('paymentgateway')}">
                                         <span class="text">{Lang::T('Payment Gateway')}</span>
                                     </a>
                                 </li>
+                                {/if}
                                 {$_MENU_SETTINGS}
+                                {if can('settings.plugin_manager', $_admin)}
                                 <li {if $_routes[0] eq 'pluginmanager' }class="active" {/if}>
                                     <a href="{Text::url('pluginmanager')}"><i class="glyphicon glyphicon-tasks"></i>
                                         {Lang::T('Plugin Manager')}</a>
                                 </li>
+                                {/if}
                             {/if}
                         </ul>
                     </li>
+                    {/if}
                     {$_MENU_AFTER_SETTINGS}
-                    {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                    {if can('menu.logs', $_admin)}
                         <li class="{if $_system_menu eq 'logs' }active{/if} treeview">
                             <a href="#">
                                 <i class="ion ion-clock"></i> <span>{Lang::T('Logs')}</span>
@@ -361,21 +447,27 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                <li {if $_routes[1] eq 'list' }class="active" {/if}><a
-                                        href="{Text::url('logs/phpnuxbill')}">PhpNuxBill</a></li>
-                                {if $_c['radius_enable']}
-                                    <li {if $_routes[1] eq 'radius' }class="active" {/if}><a
-                                            href="{Text::url('logs/radius')}">Radius</a>
-                                    </li>
+                                {if can('logs.system', $_admin)}
+                                    <li {if $_routes[1] eq 'list' }class="active" {/if}><a
+                                            href="{Text::url('logs/phpnuxbill')}">PhpNuxBill</a></li>
                                 {/if}
-                                <li {if $_routes[1] eq 'message' }class="active" {/if}><a
-                                    href="{Text::url('logs/message')}">Message</a></li>
+                                {if $_c['radius_enable']}
+                                    {if can('logs.radius', $_admin)}
+                                        <li {if $_routes[1] eq 'radius' }class="active" {/if}><a
+                                                href="{Text::url('logs/radius')}">Radius</a>
+                                        </li>
+                                    {/if}
+                                {/if}
+                                {if can('logs.message', $_admin)}
+                                    <li {if $_routes[1] eq 'message' }class="active" {/if}><a
+                                        href="{Text::url('logs/message')}">Message</a></li>
+                                {/if}
                                 {$_MENU_LOGS}
                             </ul>
                         </li>
                     {/if}
                     {$_MENU_AFTER_LOGS}
-                    {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                    {if can('menu.documentation', $_admin)}
                         <li {if $_routes[1] eq 'docs' }class="active" {/if}>
                             <a href="{if $_c['docs_clicked'] != 'yes'}{Text::url('settings/docs')}{else}{$app_url}/docs{/if}">
                                 <i class="ion ion-ios-bookmarks"></i>
@@ -386,6 +478,8 @@
                                 {/if}
                             </a>
                         </li>
+                    {/if}
+                    {if can('menu.community', $_admin)}
                         <li {if $_system_menu eq 'community' }class="active" {/if}>
                             <a href="{Text::url('community')}">
                                 <i class="ion ion-chatboxes"></i>

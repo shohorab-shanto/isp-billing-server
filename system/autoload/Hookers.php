@@ -6,6 +6,7 @@
  **/
 
 $menu_registered = array();
+$plugin_routes_registered = array();
 
 /**
  * Register for global menu
@@ -20,7 +21,7 @@ $menu_registered = array();
  * @param string color Label color
  * @param string auth authorization ['SuperAdmin', 'Admin', 'Report', 'Agent', 'Sales'] will only show in this user, empty array for all users
  */
-function register_menu($name, $admin, $function, $position, $icon = '', $label = '', $color = 'success', $auth = [])
+function register_menu($name, $admin, $function, $position, $icon = '', $label = '', $color = 'success', $auth = [], $permission = '')
 {
     global $menu_registered;
     $menu_registered[] = [
@@ -31,7 +32,22 @@ function register_menu($name, $admin, $function, $position, $icon = '', $label =
         "function" => $function,
         "label" => $label,
         "color" => $color,
-        "auth" => $auth
+        "auth" => $auth,
+        "permission" => $permission
+    ];
+}
+
+function register_plugin_route($function, $permission = '', $admin = true, $customer = false)
+{
+    global $plugin_routes_registered;
+    if (empty($function)) {
+        return;
+    }
+    $plugin_routes_registered[$function] = [
+        'function' => $function,
+        'permission' => $permission,
+        'admin' => $admin,
+        'customer' => $customer
     ];
 }
 

@@ -5,12 +5,16 @@ use PEAR2\Net\RouterOS\Client;
 use PEAR2\Net\RouterOS\Request;
 
 
-register_menu(" MikroTik Monitor", true, "mikrotik_monitor_ui", 'AFTER_SETTINGS', 'ion ion-wifi', "New", "green");
+register_menu(" MikroTik Monitor", true, "mikrotik_monitor_ui", 'AFTER_SETTINGS', 'ion ion-wifi', "New", "green", [], 'plugins.mikrotik_monitor.view');
+register_plugin_route("mikrotik_monitor_ui", 'plugins.mikrotik_monitor.view', true, false);
 
 function mikrotik_monitor_ui()
 {
     global $ui, $routes;
     _admin();
+    if (!can('plugins.mikrotik_monitor.view')) {
+        r2(U . 'dashboard', 'e', Lang::T('You do not have permission to access this page'));
+    }
     $ui->assign('_title', 'Mikrotik Router Monitor');
     $ui->assign('_system_menu', 'Router Monitor');
     $admin = Admin::_info();

@@ -1,19 +1,32 @@
 <?php 
- register_menu("Add Customer", true, "quickadd", 'AFTER_CUSTOMERS',  'ion ion-person-add');
+ register_menu("Add Customer", true, "quickadd", 'AFTER_CUSTOMERS',  'ion ion-person-add', '', 'success', [], 'customers.create');
+ register_plugin_route("quickadd", 'customers.create', true, false);
 
  function quickadd()
 {
 	global $ui,$routes,$config, $zero;
 	_admin();
+    if (!can('customers.create')) {
+        r2(U . 'dashboard', 'e', Lang::T('You do not have permission to access this page'));
+    }
     $ui->assign('_system_menu', 'quickadd');
     $admin = Admin::_info();
     $ui->assign('_admin', $admin);
-    $ui->assign('routes', $routes);
+	$ui->assign('routes', $routes);
 	$ui->assign('_title', 'Add Customer');
     $pltype = 'Hotspot';
 	if ($routes['2'] == 'pppoe') {
         $pltype = 'PPPOE';
 	}
+    $hotspotPlanCount = ORM::for_table('tbl_plans')->where('type', 'Hotspot')->where('enabled', 1)->count();
+    $pppoePlanCount = ORM::for_table('tbl_plans')->where('type', 'PPPOE')->where('enabled', 1)->count();
+    if (empty($routes['2']) && $hotspotPlanCount == 0 && $pppoePlanCount > 0) {
+        $routes['2'] = 'pppoe';
+        $pltype = 'PPPOE';
+    }
+    $ui->assign('routes', $routes);
+    $ui->assign('hotspotPlanCount', $hotspotPlanCount);
+    $ui->assign('pppoePlanCount', $pppoePlanCount);
     $plans = ORM::for_table('tbl_plans')->where('type', $pltype)->where('enabled', 1)->find_many();
     $ui->assign('plans', $plans);
     
@@ -85,11 +98,17 @@
             $d->fullname = $fullname;
             $d->address = $address;
             $d->created_by = $admin['id'];
+            if (Rbac::hasColumn('tbl_customers', 'owner_user_id')) {
+                $d->owner_user_id = $admin['id'];
+            }
             $d->phonenumber = Lang::phoneFormat($phonenumber);
             $d->service_type = $service_type;
             $d->city = $city;
             $d->save();
             $plan = ORM::for_table('tbl_plans')->where('enabled', 1)->find_one($ppln);
+            if (!$plan) {
+                r2(U . "plugin/quickadd".$rdrct, 'e', Lang::T('Select Package first!'));
+            }
             $server = $plan['routers'];
             if ($plan['is_radius'] == '1') {
                 $server = 'Radius';
@@ -166,4 +185,4 @@
 	}
 		
 	$ui->display('quickadd.tpl');
-} 
+}

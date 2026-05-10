@@ -40,6 +40,10 @@ if (_post('send') == 'balance') {
             //sender
             $d = ORM::for_table('tbl_payment_gateway')->create();
             $d->username = $user['username'];
+            $d->user_id = $user['id'];
+            if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                $d->owner_user_id = Rbac::ownerIdFromCustomer($user);
+            }
             $d->gateway = $target['username'];
             $d->plan_id = 0;
             $d->plan_name = 'Send Balance';
@@ -57,6 +61,10 @@ if (_post('send') == 'balance') {
             //receiver
             $d = ORM::for_table('tbl_payment_gateway')->create();
             $d->username = $target['username'];
+            $d->user_id = $target['id'];
+            if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                $d->owner_user_id = Rbac::ownerIdFromCustomer($target);
+            }
             $d->gateway = $user['username'];
             $d->plan_id = 0;
             $d->plan_name = 'Receive Balance';

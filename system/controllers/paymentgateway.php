@@ -21,7 +21,7 @@ switch ($action) {
     case 'audit':
         $pg = alphanumeric($routes[2]);
         $q = alphanumeric(_req('q'), '-._ ');
-        $query = ORM::for_table('tbl_payment_gateway')->order_by_desc("id");
+        $query = Rbac::scopeOwned(ORM::for_table('tbl_payment_gateway')->order_by_desc("id"), 'tbl_payment_gateway', $admin);
         $query->selects('id', 'username', 'gateway', 'gateway_trx_id', 'plan_id', 'plan_name', 'routers_id', 'routers', 'price', 'pg_url_payment', 'payment_method', 'payment_channel', 'expired_date', 'created_date', 'paid_date', 'trx_invoice', 'status');
         $query->where('gateway', $pg);
         if (!empty($q)) {
@@ -39,6 +39,18 @@ switch ($action) {
     case 'auditview':
         $pg = alphanumeric($routes[2]);
         $d = ORM::for_table('tbl_payment_gateway')->find_one($pg);
+        if ($d && Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id') && !in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            $scopeIds = Rbac::getScopeUserIds($admin);
+            if (empty($scopeIds)) {
+                $scopeIds = [(int) $admin['id']];
+            }
+            if (!in_array((int) $d['owner_user_id'], $scopeIds)) {
+                r2(getUrl('paymentgateway'), 'e', Lang::T('You do not have permission to access this page'));
+            }
+        }
+        if (!$d) {
+            r2(getUrl('paymentgateway'), 'e', Lang::T('Data Not Found'));
+        }
         $d['pg_request'] = (!empty($d['pg_request']))? Text::jsonArray21Array(json_decode($d['pg_request'], true)) : [];
         $d['pg_paid_response'] = (!empty($d['pg_paid_response']))? Text::jsonArray21Array(json_decode($d['pg_paid_response'], true)) : [];
         $ui->assign('_title', 'Payment Gateway Audit View');

@@ -5,8 +5,10 @@ class graph_monthly_registered_customers
     public function getWidget()
     {
         global $CACHE_PATH,$ui;
+        $admin = Admin::_info();
+        $cacheSuffix = (!empty($admin) && !Rbac::hasGlobalDataScope($admin)) ? ('_' . (int) $admin['id']) : '';
 
-        $cacheMRfile = $CACHE_PATH . File::pathFixer('/monthlyRegistered.temp');
+        $cacheMRfile = $CACHE_PATH . File::pathFixer('/monthlyRegistered' . $cacheSuffix . '.temp');
         //Compatibility for old path
         if (file_exists($oldCacheMRfile = str_replace($CACHE_PATH, '', $cacheMRfile))) {
             rename($oldCacheMRfile, $cacheMRfile);
@@ -16,7 +18,7 @@ class graph_monthly_registered_customers
             $monthlyRegistered = json_decode(file_get_contents($cacheMRfile), true);
         } else {
             //Monthly Registered Customers
-            $result = ORM::for_table('tbl_customers')
+            $result = Rbac::scopeCustomers(ORM::for_table('tbl_customers'), $admin)
                 ->select_expr('MONTH(created_at)', 'month')
                 ->select_expr('COUNT(*)', 'count')
                 ->where_raw('YEAR(created_at) = YEAR(NOW())')

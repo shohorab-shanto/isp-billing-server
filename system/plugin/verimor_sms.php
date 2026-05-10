@@ -1,6 +1,7 @@
 <?php
 
-register_menu("Verimor SMS Gateway", true, "verimor_sms", 'AFTER_SETTINGS', 'glyphicon glyphicon-comment', '', '', ['Admin', 'SuperAdmin']);
+register_menu("Verimor SMS Gateway", true, "verimor_sms", 'AFTER_SETTINGS', 'glyphicon glyphicon-comment', '', 'success', ['Admin', 'SuperAdmin'], 'plugins.verimor_sms.manage');
+register_plugin_route("verimor_sms", 'plugins.verimor_sms.manage', true, false);
 
 #register_hook('send_sms', 'verimor_sms_send');
 
@@ -9,6 +10,9 @@ function verimor_sms()
 {
     global $ui, $admin;
     _admin();
+    if (!can('plugins.verimor_sms.manage')) {
+        r2(getUrl('dashboard'), 'e', Lang::T('You do not have permission to access this page'));
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $d = ORM::for_table('tbl_appconfig')->where('setting', 'verimorsms_username')->find_one();

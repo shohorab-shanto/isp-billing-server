@@ -74,6 +74,11 @@
                     <div class="form-group">
                         <label class="col-md-3 control-label">{Lang::T('Select Package')}</label>
                         <div class="col-md-9">
+                            {if count($plans) == 0}
+                                <div class="alert alert-warning" style="margin-bottom: 8px;">
+                                    {Lang::T('No enabled package found for this service type')}.
+                                </div>
+                            {/if}
                             <select class="form-control select2"
                                 name="ppln" style="width: 100%" data-placeholder="{Lang::T('Select Package')}...">
 						{foreach $plans as $plan}

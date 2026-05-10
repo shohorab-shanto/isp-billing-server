@@ -14,8 +14,13 @@
  *
  **/
 
-register_menu(" Asset Manager", true, "assetManager", 'AFTER_MESSAGE', 'fa fa-cubes', '', "");
+register_menu(" Asset Manager", true, "assetManager", 'AFTER_MESSAGE', 'fa fa-cubes', '', 'success', [], 'plugins.asset_manager.view');
+register_plugin_route("assetManager", 'plugins.asset_manager.view', true, false);
 
+function assetManagerScopeAssets($query)
+{
+    return Rbac::scopeOwned($query, 'tbl_assets', Admin::_info(), 'created_by');
+}
 
 function assetManager()
 {
@@ -31,7 +36,7 @@ function assetManager()
      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>');
 
     // Check user type for access
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Sales'])) {
+    if (!can('plugins.asset_manager.view', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }
@@ -359,17 +364,17 @@ function assetDashboard()
 
     try {
         // Get analytics data
-        $totalAssets = ORM::for_table('tbl_assets')->count();
-        $activeAssets = ORM::for_table('tbl_assets')->where('status', 'Active')->count();
-        $inactiveAssets = ORM::for_table('tbl_assets')->where('status', 'Inactive')->count();
-        $maintenanceAssets = ORM::for_table('tbl_assets')->where('status', 'Under Maintenance')->count();
+        $totalAssets = assetManagerScopeAssets(ORM::for_table('tbl_assets'))->count();
+        $activeAssets = assetManagerScopeAssets(ORM::for_table('tbl_assets'))->where('status', 'Active')->count();
+        $inactiveAssets = assetManagerScopeAssets(ORM::for_table('tbl_assets'))->where('status', 'Inactive')->count();
+        $maintenanceAssets = assetManagerScopeAssets(ORM::for_table('tbl_assets'))->where('status', 'Under Maintenance')->count();
 
         $totalCategories = ORM::for_table('tbl_asset_categories')->count();
         $totalBrands = ORM::for_table('tbl_asset_brands')->count();
         $totalModels = ORM::for_table('tbl_asset_models')->count();
 
         // Get recent assets
-        $recentAssets = ORM::for_table('tbl_assets')
+        $recentAssets = assetManagerScopeAssets(ORM::for_table('tbl_assets')
             ->select('tbl_assets.*')
             ->select('tbl_asset_categories.name', 'category_name')
             ->select('tbl_asset_brands.name', 'brand_name')
@@ -378,29 +383,30 @@ function assetDashboard()
             ->join('tbl_asset_brands', ['tbl_assets.brand_id', '=', 'tbl_asset_brands.id'])
             ->join('tbl_asset_models', ['tbl_assets.model_id', '=', 'tbl_asset_models.id'])
             ->order_by_desc('tbl_assets.created_at')
-            ->limit(10)
+            ->limit(10))
             ->find_array();
 
         // Get assets by category for chart
-        $assetsByCategory = ORM::for_table('tbl_assets')
+        $assetsByCategory = assetManagerScopeAssets(ORM::for_table('tbl_assets')
             ->select('tbl_asset_categories.name', 'category_name')
             ->select_expr('COUNT(*)', 'count')
             ->join('tbl_asset_categories', ['tbl_assets.category_id', '=', 'tbl_asset_categories.id'])
-            ->group_by('tbl_asset_categories.name')
+            ->group_by('tbl_asset_categories.name'))
             ->find_array();
 
         // Get assets by status for chart
-        $assetsByStatus = ORM::for_table('tbl_assets')
+        $assetsByStatus = assetManagerScopeAssets(ORM::for_table('tbl_assets')
             ->select('status')
             ->select_expr('COUNT(*)', 'count')
-            ->group_by('status')
+            ->group_by('status'))
             ->find_array();
 
         // Get cost-related statistics (with error handling for missing column)
         try {
 
-            $totalAssetValue = ORM::for_table('tbl_assets')
+            $totalAssetValue = assetManagerScopeAssets(ORM::for_table('tbl_assets')
                 ->select_expr('COALESCE(SUM(purchase_cost), 0)', 'total')
+            )
                 ->find_one();
             $totalAssetValue = $totalAssetValue ? $totalAssetValue['total'] : 0;
 
@@ -408,7 +414,7 @@ function assetDashboard()
             $currencyCode = isset($config['currency_code']) ? $config['currency_code'] : 'USD';
 
             // Get assets by cost range for chart
-            $assetsByCostRange = ORM::for_table('tbl_assets')
+            $assetsByCostRange = assetManagerScopeAssets(ORM::for_table('tbl_assets')
                 ->select_expr(
                     "CASE 
                         WHEN purchase_cost IS NULL OR purchase_cost = 0 OR purchase_cost = '' THEN 'No Cost Data'
@@ -421,11 +427,11 @@ function assetDashboard()
                     'cost_range'
                 )
                 ->select_expr('COUNT(*)', 'count')
-                ->group_by('cost_range')
+                ->group_by('cost_range'))
                 ->find_array();
 
             // Get top 5 most expensive assets
-            $expensiveAssets = ORM::for_table('tbl_assets')
+            $expensiveAssets = assetManagerScopeAssets(ORM::for_table('tbl_assets')
                 ->select('tbl_assets.name')
                 ->select('tbl_assets.asset_tag')
                 ->select('tbl_assets.purchase_cost')
@@ -435,11 +441,11 @@ function assetDashboard()
                 ->where_not_equal('purchase_cost', '')
                 ->where_not_equal('purchase_cost', 0)
                 ->order_by_desc('purchase_cost')
-                ->limit(5)
+                ->limit(5))
                 ->find_array();
 
             // Get cost by category for chart
-            $costByCategory = ORM::for_table('tbl_assets')
+            $costByCategory = assetManagerScopeAssets(ORM::for_table('tbl_assets')
                 ->select('tbl_asset_categories.name', 'category_name')
                 ->select_expr('COALESCE(SUM(purchase_cost), 0)', 'total_cost')
                 ->join('tbl_asset_categories', ['tbl_assets.category_id', '=', 'tbl_asset_categories.id'])
@@ -447,7 +453,7 @@ function assetDashboard()
                 ->where_not_equal('purchase_cost', '')
                 ->where_not_equal('purchase_cost', 0)
                 ->where_gt('purchase_cost', 0)
-                ->group_by('tbl_asset_categories.name')
+                ->group_by('tbl_asset_categories.name'))
                 ->find_array();
         } catch (Exception $costException) {
             // If purchase_cost column doesn't exist, set default values
@@ -895,7 +901,7 @@ function assetsList()
     global $ui;
 
     try {
-        $assets = ORM::for_table('tbl_assets')
+        $assets = assetManagerScopeAssets(ORM::for_table('tbl_assets')
             ->select('tbl_assets.*')
             ->select('tbl_asset_categories.name', 'category_name')
             ->select('tbl_asset_brands.name', 'brand_name')
@@ -905,7 +911,7 @@ function assetsList()
             ->join('tbl_asset_brands', ['tbl_assets.brand_id', '=', 'tbl_asset_brands.id'])
             ->join('tbl_asset_models', ['tbl_assets.model_id', '=', 'tbl_asset_models.id'])
             ->left_outer_join('tbl_customers', ['tbl_assets.assigned_to', '=', 'tbl_customers.id'])
-            ->order_by_desc('tbl_assets.created_at');
+            ->order_by_desc('tbl_assets.created_at'));
     } catch (Exception $e) {
         $assets = [];
         _log(Lang::T('Assets List Error: ') . $e->getMessage());
@@ -929,7 +935,7 @@ function assetsAdd()
     try {
         $categories = ORM::for_table('tbl_asset_categories')->where('status', 'Active')->order_by_asc('name')->find_array();
         $brands = ORM::for_table('tbl_asset_brands')->where('status', 'Active')->order_by_asc('name')->find_array();
-        $customers = ORM::for_table('tbl_customers')->order_by_asc('id')->find_array();
+        $customers = Rbac::scopeCustomers(ORM::for_table('tbl_customers')->order_by_asc('id'), Admin::_info())->find_array();
     } catch (Exception $e) {
         $categories = [];
         $brands = [];
@@ -967,6 +973,9 @@ function assetsAdd()
         // Handle empty assigned_to - convert empty strings to NULL for database
         if (empty($assigned_to)) {
             $assigned_to = null;
+        }
+        if (!empty($assigned_to) && !canAccessCustomer($assigned_to, Admin::_info())) {
+            r2(getUrl('plugin/assetManager/assets-add'), 'e', Lang::T('You do not have permission to access this page'));
         }
 
         // Handle coordinates - validate and convert to proper decimal values
@@ -1035,7 +1044,7 @@ function assetsEdit()
         r2(getUrl('plugin/assetManager/assets'), 'e', Lang::T('Asset ID is required'));
     }
 
-    $asset = ORM::for_table('tbl_assets')->find_one($id);
+    $asset = assetManagerScopeAssets(ORM::for_table('tbl_assets'))->find_one($id);
     if (!$asset) {
         r2(getUrl('plugin/assetManager/assets'), 'e', Lang::T('Asset not found'));
     }
@@ -1043,7 +1052,7 @@ function assetsEdit()
     $categories = ORM::for_table('tbl_asset_categories')->where('status', 'Active')->order_by_asc('name')->find_array();
     $brands = ORM::for_table('tbl_asset_brands')->where('status', 'Active')->order_by_asc('name')->find_array();
     $models = ORM::for_table('tbl_asset_models')->where('brand_id', $asset['brand_id'])->where('status', 'Active')->order_by_asc('name')->find_array();
-    $customers = ORM::for_table('tbl_customers')->order_by_asc('id')->find_array();
+    $customers = Rbac::scopeCustomers(ORM::for_table('tbl_customers')->order_by_asc('id'), Admin::_info())->find_array();
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $category_id = _post('category_id');
@@ -1075,6 +1084,9 @@ function assetsEdit()
         // Handle empty assigned_to - convert empty strings to NULL for database
         if (empty($assigned_to)) {
             $assigned_to = null;
+        }
+        if (!empty($assigned_to) && !canAccessCustomer($assigned_to, Admin::_info())) {
+            r2(getUrl('plugin/assetManager/assets-edit/' . $id), 'e', Lang::T('You do not have permission to access this page'));
         }
 
         // Handle coordinates - validate and convert to proper decimal values
@@ -1140,7 +1152,7 @@ function assetsView()
     }
 
     // Get asset with related data
-    $asset = ORM::for_table('tbl_assets')
+    $asset = assetManagerScopeAssets(ORM::for_table('tbl_assets')
         ->select('tbl_assets.*')
         ->select('tbl_asset_categories.name', 'category_name')
         ->select('tbl_asset_brands.name', 'brand_name')
@@ -1149,7 +1161,7 @@ function assetsView()
         ->left_outer_join('tbl_asset_categories', ['tbl_assets.category_id', '=', 'tbl_asset_categories.id'])
         ->left_outer_join('tbl_asset_brands', ['tbl_assets.brand_id', '=', 'tbl_asset_brands.id'])
         ->left_outer_join('tbl_asset_models', ['tbl_assets.model_id', '=', 'tbl_asset_models.id'])
-        ->left_outer_join('tbl_customers', ['tbl_assets.assigned_to', '=', 'tbl_customers.id'])
+        ->left_outer_join('tbl_customers', ['tbl_assets.assigned_to', '=', 'tbl_customers.id']))
         ->find_one($id);
 
     if (!$asset) {
@@ -1185,7 +1197,7 @@ function assetsDelete()
         r2(getUrl('plugin/assetManager/assets'), 'e', Lang::T('Asset ID is required'));
     }
 
-    $asset = ORM::for_table('tbl_assets')->find_one($id);
+    $asset = assetManagerScopeAssets(ORM::for_table('tbl_assets'))->find_one($id);
     if (!$asset) {
         r2(getUrl('plugin/assetManager/assets'), 'e', Lang::T('Asset not found'));
     }
@@ -1211,8 +1223,8 @@ function getModelsByBrand()
         }
 
         // Check user permissions
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Sales'])) {
-            _log("getModelsByBrand: Access denied for user type: " . $admin['user_type']);
+        if (!can('plugins.asset_manager.view', $admin)) {
+            _log("getModelsByBrand: Access denied for user: " . $admin['id']);
             echo json_encode(['success' => false, 'message' => Lang::T('Access denied')]);
             exit;
         }

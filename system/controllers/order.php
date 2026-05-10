@@ -336,6 +336,9 @@ switch ($action) {
                 $d = ORM::for_table('tbl_payment_gateway')->create();
                 $d->username = $user['username'];
                 $d->user_id = $user['id'];
+                if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                    $d->owner_user_id = Rbac::ownerIdFromCustomer($user);
+                }
                 $d->gateway = $target['username'];
                 $d->plan_id = $plan['id'];
                 $d->plan_name = $plan['name_plan'];
@@ -356,6 +359,9 @@ switch ($action) {
                 $d = ORM::for_table('tbl_payment_gateway')->create();
                 $d->username = $target['username'];
                 $d->user_id = $target['id'];
+                if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                    $d->owner_user_id = Rbac::ownerIdFromCustomer($target);
+                }
                 $d->gateway = $user['username'];
                 $d->plan_id = $plan['id'];
                 $d->plan_name = $plan['name_plan'];
@@ -586,6 +592,9 @@ switch ($action) {
                 $d = ORM::for_table('tbl_payment_gateway')->create();
                 $d->username = $user['username'];
                 $d->user_id = $user['id'];
+                if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                    $d->owner_user_id = Rbac::ownerIdFromCustomer($user);
+                }
                 $d->gateway = $gateway;
                 $d->plan_id = 0;
                 $d->plan_name = 'Custom';
@@ -650,6 +659,9 @@ switch ($action) {
                     $d = ORM::for_table('tbl_payment_gateway')->create();
                     $d->username = $user['username'];
                     $d->user_id = $user['id'];
+                    if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                        $d->owner_user_id = Rbac::ownerIdFromCustomer($user);
+                    }
                     $d->gateway = $gateway;
                     $d->plan_id = $plan['id'];
                     $d->plan_name = $plan['name_plan'];
@@ -673,6 +685,9 @@ switch ($action) {
                 } else {
                     $d->username = $user['username'];
                     $d->user_id = $user['id'];
+                    if (Rbac::hasColumn('tbl_payment_gateway', 'owner_user_id')) {
+                        $d->owner_user_id = Rbac::ownerIdFromCustomer($user);
+                    }
                     $d->gateway = $gateway;
                     $d->plan_id = $plan['id'];
                     $d->plan_name = $plan['name_plan'];

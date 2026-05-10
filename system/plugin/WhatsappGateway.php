@@ -1,6 +1,9 @@
 <?php
 
-register_menu("Whatsapp Gateway", true, "whatsappGateway", 'AFTER_SETTINGS', 'glyphicon glyphicon-comment', '', '', ['Admin', 'SuperAdmin']);
+register_menu("Whatsapp Gateway", true, "whatsappGateway", 'AFTER_SETTINGS', 'glyphicon glyphicon-comment', '', 'success', ['Admin', 'SuperAdmin'], 'plugins.whatsapp_gateway.manage');
+register_plugin_route("whatsappGateway", 'plugins.whatsapp_gateway.manage', true, false);
+register_plugin_route("whatsappGateway_config", 'plugins.whatsapp_gateway.manage', true, false);
+register_plugin_route("whatsappGateway_login", 'plugins.whatsapp_gateway.manage', true, false);
 
 register_hook('send_whatsapp', 'whatsappGateway_hook_send_whatsapp');
 
@@ -8,6 +11,9 @@ function whatsappGateway()
 {
     global $ui, $config, $admin;
     _admin();
+    if (!can('plugins.whatsapp_gateway.manage')) {
+        r2(U . 'dashboard', 'e', Lang::T('You do not have permission to access this page'));
+    }
     $path = whatsappGateway_getPath();
 
     if (empty($config['whatsapp_gateway_secret'])) {
@@ -35,6 +41,9 @@ function whatsappGateway_config()
 {
     global $ui;
     _admin();
+    if (!can('plugins.whatsapp_gateway.manage')) {
+        r2(U . 'dashboard', 'e', Lang::T('You do not have permission to access this page'));
+    }
 
     if (!empty(_post('whatsapp_gateway_url')) || !empty(_post('whatsapp_gateway_secret'))) {
         $d = ORM::for_table('tbl_appconfig')->where('setting', 'whatsapp_gateway_url')->find_one();
@@ -82,6 +91,9 @@ function whatsappGateway_login()
 {
     global $ui;
     _admin();
+    if (!can('plugins.whatsapp_gateway.manage')) {
+        r2(U . 'dashboard', 'e', Lang::T('You do not have permission to access this page'));
+    }
 
     $phone = alphanumeric(_get('p'));
     $path = whatsappGateway_getPath();

@@ -1,11 +1,18 @@
 <?php
 
+_admin();
+
+if (!can('customers.view', $admin)) {
+    echo '<p>' . Lang::T('You do not have permission to access this page') . '</p>';
+    exit;
+}
+
 $query = isset($_GET['query']) ? trim($_GET['query']) : '';
 
 if (!empty($query)) {
-    $results = ORM::for_table('tbl_customers')
-        ->where_like('username', "%$query%")
-        ->find_many();
+    $customerQuery = ORM::for_table('tbl_customers')->where_like('username', "%$query%");
+    $customerQuery = scopeCustomers($customerQuery, $admin);
+    $results = $customerQuery->find_many();
 
     if ($results) {
         echo '<ul>';

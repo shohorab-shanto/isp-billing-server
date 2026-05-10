@@ -6,8 +6,9 @@ class top_widget
     public function getWidget()
     {
         global $ui, $current_date, $start_date;
+        $admin = Admin::_info();
 
-        $iday = ORM::for_table('tbl_transactions')
+        $iday = Rbac::scopeOwned(ORM::for_table('tbl_transactions'), 'tbl_transactions', $admin)
             ->where('recharged_on', $current_date)
             ->where_not_equal('method', 'Customer - Balance')
             ->where_not_equal('method', 'Recharge Balance - Administrator')
@@ -18,7 +19,7 @@ class top_widget
         }
         $ui->assign('iday', $iday);
 
-        $imonth = ORM::for_table('tbl_transactions')
+        $imonth = Rbac::scopeOwned(ORM::for_table('tbl_transactions'), 'tbl_transactions', $admin)
             ->where_not_equal('method', 'Customer - Balance')
             ->where_not_equal('method', 'Recharge Balance - Administrator')
             ->where_gte('recharged_on', $start_date)
@@ -28,7 +29,7 @@ class top_widget
         }
         $ui->assign('imonth', $imonth);
 
-        $itotal = ORM::for_table('tbl_transactions')
+        $itotal = Rbac::scopeOwned(ORM::for_table('tbl_transactions'), 'tbl_transactions', $admin)
             ->where_not_equal('method', 'Customer - Balance')
             ->where_not_equal('method', 'Recharge Balance - Administrator')
             ->sum('price');
@@ -37,26 +38,26 @@ class top_widget
         }
         $ui->assign('itotal', $itotal);
 
-        $u_act = ORM::for_table('tbl_user_recharges')->where('status', 'on')->count();
+        $u_act = Rbac::scopeOwned(ORM::for_table('tbl_user_recharges'), 'tbl_user_recharges', $admin)->where('status', 'on')->count();
         if (empty($u_act)) {
             $u_act = '0';
         }
         $ui->assign('u_act', $u_act);
 
-        $u_all = ORM::for_table('tbl_user_recharges')->count();
+        $u_all = Rbac::scopeOwned(ORM::for_table('tbl_user_recharges'), 'tbl_user_recharges', $admin)->count();
         if (empty($u_all)) {
             $u_all = '0';
         }
         $ui->assign('u_all', $u_all);
 
 
-        $c_all = ORM::for_table('tbl_customers')->count();
+        $c_all = Rbac::scopeCustomers(ORM::for_table('tbl_customers'), $admin)->count();
         if (empty($c_all)) {
             $c_all = '0';
         }
         $ui->assign('c_all', $c_all);
 
-        $c_disabled = ORM::for_table('tbl_customers')->where('status', 'Disabled')->count();
+        $c_disabled = Rbac::scopeCustomers(ORM::for_table('tbl_customers'), $admin)->where('status', 'Disabled')->count();
         if (empty($c_disabled)) {
             $c_disabled = '0';
         }

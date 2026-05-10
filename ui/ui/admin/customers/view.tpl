@@ -36,7 +36,7 @@
                     <li class="list-group-item">
                         <b>{Lang::T('Zip')}</b> <span class="pull-right">{$d['zip']}</span>
                     </li>
-                    {if in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                    {if can('customers.edit', $_admin)}
                         <li class="list-group-item">
                             <b>{Lang::T('Password')}</b> <input type="password" value="{$d['password']}"
                                 style=" border: 0px; text-align: right;" class="pull-right"
@@ -49,7 +49,7 @@
                             <b>PPPOE {Lang::T('Username')}</b> <span class="pull-right">{$d['pppoe_username']}</span>
                         </li>
                     {/if}
-                    {if $d['pppoe_password'] != '' && in_array($_admin['user_type'],['SuperAdmin','Admin'])}
+                    {if $d['pppoe_password'] != '' && can('customers.edit', $_admin)}
                         <li class="list-group-item">
                             <b>PPPOE {Lang::T('Password')}</b> <input type="password" value="{$d['pppoe_password']}"
                                 style=" border: 0px; text-align: right;" class="pull-right"
@@ -110,17 +110,23 @@
                         </li>
                     {/if}
                 </ul>
+                {if can('customers.delete', $_admin) || can('customers.edit', $_admin)}
                 <div class="row">
+                    {if can('customers.delete', $_admin)}
                     <div class="col-xs-4">
                         <a href="{Text::url('customers/delete/', $d['id'], '&token=', $csrf_token)}" id="{$d['id']}"
                             class="btn btn-danger btn-block btn-sm"
                             onclick="return ask(this, '{Lang::T('Delete')}?')"><span class="fa fa-trash"></span></a>
                     </div>
+                    {/if}
+                    {if can('customers.edit', $_admin)}
                     <div class="col-xs-8">
                         <a href="{Text::url('customers/edit/', $d['id'], '&token=', $csrf_token)}"
                             class="btn btn-warning btn-sm btn-block">{Lang::T('Edit')}</a>
                     </div>
+                    {/if}
                 </div>
+                {/if}
             </div>
         </div>
     </div>
@@ -240,17 +246,23 @@
                                 {$package['routers']} <span class="pull-right">{$package['method']}</span>
                             </li>
                         </ul>
+                        {if can('customers.edit', $_admin) || can('customers.recharge', $_admin)}
                         <div class="row">
+                            {if can('customers.edit', $_admin)}
                             <div class="col-xs-4">
                                 <a href="{Text::url('customers/deactivate/', $d['id'],'/',$package['plan_id'], '&token=', $csrf_token)}"
                                     id="{$d['id']}" class="btn btn-danger btn-block btn-sm"
                                     onclick="return ask(this, '{Lang::T('This will deactivate Customer Plan, and make it expired')}')">{Lang::T('Deactivate')}</a>
                             </div>
+                            {/if}
+                            {if can('customers.recharge', $_admin)}
                             <div class="col-xs-8">
                                 <a href="{Text::url('customers/recharge/', $d['id'], '/', $package['plan_id'], '&token=', $csrf_token)}"
                                     class="btn btn-success btn-sm btn-block">{Lang::T('Recharge')}</a>
                             </div>
+                            {/if}
                         </div>
+                        {/if}
                     </div>
                 </div>
             </div>

@@ -9,6 +9,20 @@
 
 class Package
 {
+    private static function ownerIdFromCustomer($customer)
+    {
+        if (empty($customer)) {
+            return null;
+        }
+        if (!empty($customer['owner_user_id'])) {
+            return $customer['owner_user_id'];
+        }
+        if (!empty($customer['created_by'])) {
+            return $customer['created_by'];
+        }
+        return null;
+    }
+
     /**
      * @param int   $id_customer String user identifier
      * @param string $router_name router name for this package
@@ -276,6 +290,9 @@ class Package
                 } else {
                     $b->admin_id = '0';
                 }
+                if (Rbac::hasColumn('tbl_user_recharges', 'owner_user_id')) {
+                    $b->owner_user_id = self::ownerIdFromCustomer($c);
+                }
                 $b->save();
             }
 
@@ -313,6 +330,9 @@ class Package
                 $t->admin_id = ($admin['id']) ? $admin['id'] : '0';
             } else {
                 $t->admin_id = '0';
+            }
+            if (Rbac::hasColumn('tbl_transactions', 'owner_user_id')) {
+                $t->owner_user_id = self::ownerIdFromCustomer($c);
             }
             $t->save();
 
@@ -392,6 +412,9 @@ class Package
                 } else {
                     $d->admin_id = '0';
                 }
+                if (Rbac::hasColumn('tbl_user_recharges', 'owner_user_id')) {
+                    $d->owner_user_id = self::ownerIdFromCustomer($c);
+                }
                 $d->save();
             }
 
@@ -427,6 +450,9 @@ class Package
                 $t->admin_id = '0';
             }
             $t->type = $p['type'];
+            if (Rbac::hasColumn('tbl_transactions', 'owner_user_id')) {
+                $t->owner_user_id = self::ownerIdFromCustomer($c);
+            }
             $t->save();
 
             if ($p['validity_unit'] == 'Period' && $p['price'] != 0) {
@@ -498,6 +524,9 @@ class Package
         } else {
             $t->admin_id = '0';
         }
+        if (Rbac::hasColumn('tbl_transactions', 'owner_user_id')) {
+            $t->owner_user_id = self::ownerIdFromCustomer($customer);
+        }
         $t->save();
 
         $balance_before = $customer['balance'];
@@ -563,6 +592,9 @@ class Package
             $t->admin_id = ($admin['id']) ? $admin['id'] : '0';
         } else {
             $t->admin_id = '0';
+        }
+        if (Rbac::hasColumn('tbl_transactions', 'owner_user_id')) {
+            $t->owner_user_id = self::ownerIdFromCustomer($customer);
         }
         $t->save();
 

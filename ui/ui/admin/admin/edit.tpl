@@ -82,6 +82,10 @@
                             <label class="col-md-3 control-label">{Lang::T('User Type')}</label>
                             <div class="col-md-9">
                                 <select name="user_type" id="user_type" class="form-control" onchange="checkUserType(this)">
+                                    {if $_admin['user_type'] eq 'Agent' && can('resellers.create', $_admin)}
+                                        <option value="Agent" {if $d['user_type'] eq 'Agent'}selected="selected" {/if}>Agent
+                                        </option>
+                                    {/if}
                                     {if $_admin['user_type'] eq 'Agent'}
                                         <option value="Sales" {if $d['user_type'] eq 'Sales'}selected="selected" {/if}>Sales
                                         </option>
@@ -114,6 +118,40 @@
                                 </select>
                             </div>
                         </div>
+                        {if $canAssignAdvancedRole}
+                            <div class="form-group">
+                                <label class="col-md-3 control-label">{Lang::T('Role')}</label>
+                                <div class="col-md-9">
+                                    <select name="role_id" id="role_id" class="form-control" onchange="toggleResellerFields()">
+                                        <option value="" data-role-type="">{Lang::T('Default')}</option>
+                                        {foreach $roles as $role}
+                                            <option value="{$role['id']}" data-role-type="{$role['type']}" {if $current_role_id eq $role['id']}selected{/if}>
+                                                {$role['name']} ({$role['slug']})
+                                            </option>
+                                        {/foreach}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group reseller-field hidden">
+                                <label class="col-md-3 control-label">{Lang::T('Parent')}</label>
+                                <div class="col-md-9">
+                                    <select name="parent_id" class="form-control">
+                                        <option value="">None</option>
+                                        {foreach $parentUsers as $parentUser}
+                                            <option value="{$parentUser['id']}" {if $d['parent_id'] eq $parentUser['id']}selected{/if}>
+                                                {$parentUser['username']} | {$parentUser['fullname']} | {$parentUser['user_type']}
+                                            </option>
+                                        {/foreach}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group reseller-field hidden">
+                                <label class="col-md-3 control-label">{Lang::T('Reseller Level')}</label>
+                                <div class="col-md-9">
+                                    <input type="number" class="form-control" name="reseller_level" value="{$d['reseller_level']}" min="0" max="{$maxResellerDepth}" {if $_admin['user_type'] neq 'SuperAdmin' && $_admin['user_type'] neq 'Admin'}readonly{/if}>
+                                </div>
+                            </div>
+                        {/if}
                     {/if}
                     <div class="form-group">
                         <label class="col-md-3 control-label">{Lang::T('Username')}</label>
@@ -155,7 +193,25 @@
         } else {
             $('#agentChooser').addClass('hidden');
         }
+        toggleResellerFields();
     }
+
+    function toggleResellerFields() {
+        var roleType = $('#role_id option:selected').data('role-type') || '';
+        var userType = $('#user_type').val();
+        var isReseller = roleType == 'reseller' || (roleType == '' && userType == 'Agent');
+        if (isReseller) {
+            $('.reseller-field').removeClass('hidden');
+        } else {
+            $('.reseller-field').addClass('hidden');
+            $('[name="parent_id"]').val('');
+            $('[name="reseller_level"]').val('0');
+        }
+    }
+
+    $(function() {
+        toggleResellerFields();
+    });
 
     function deletePhoto(id) {
         if (confirm('Delete photo?')) {
