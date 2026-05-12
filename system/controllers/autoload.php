@@ -201,29 +201,19 @@ switch ($action) {
     case 'plan':
         $server = _post('server');
         $jenis = _post('jenis');
-        if (in_array($admin['user_type'], array('SuperAdmin', 'Admin'))) {
-            switch ($server) {
-                case 'radius':
-                    $d = ORM::for_table('tbl_plans')->where('is_radius', 1)->where('type', $jenis)->find_many();
-                    break;
-                case '':
-                    break;
-                default:
-                    $d = ORM::for_table('tbl_plans')->where('routers', $server)->where('type', $jenis)->find_many();
-                    break;
-            }
-        } else {
-            switch ($server) {
-                case 'radius':
-                    $d = ORM::for_table('tbl_plans')->where('is_radius', 1)->where('type', $jenis)->find_many();
-                    break;
-                case '':
-                    break;
-                default:
-                    $d = ORM::for_table('tbl_plans')->where('routers', $server)->where('type', $jenis)->find_many();
-                    break;
-            }
+        $query = ORM::for_table('tbl_plans')->where('type', $jenis);
+        switch ($server) {
+            case 'radius':
+                $query->where('is_radius', 1);
+                break;
+            case '':
+                $query->where_raw('1 = 0');
+                break;
+            default:
+                $query->where('routers', $server);
+                break;
         }
+        $d = Rbac::scopePlans($query, $admin)->find_many();
         $ui->assign('d', $d);
 
         $ui->display('admin/autoload/plan.tpl');

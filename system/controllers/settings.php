@@ -11,6 +11,73 @@ $ui->assign('_system_menu', 'settings');
 $action = $routes['1'];
 $ui->assign('_admin', $admin);
 
+if (!function_exists('settings_get_downline_user_ids')) {
+    function settings_get_downline_user_ids($userId)
+    {
+        $userId = (int) $userId;
+        if (!$userId) {
+            return [];
+        }
+
+        $ids = [];
+        $children = ORM::for_table('tbl_users')
+            ->select('id')
+            ->where('parent_id', $userId)
+            ->find_array();
+
+        foreach ($children as $child) {
+            $childId = (int) $child['id'];
+            $ids[] = $childId;
+            $ids = array_merge($ids, settings_get_downline_user_ids($childId));
+        }
+
+        return array_values(array_unique($ids));
+    }
+}
+
+if (!function_exists('settings_count_customers_for_owner_ids')) {
+    function settings_count_customers_for_owner_ids($ownerIds)
+    {
+        $ownerIds = array_values(array_filter(array_map('intval', (array) $ownerIds)));
+        if (empty($ownerIds)) {
+            return 0;
+        }
+
+        $query = ORM::for_table('tbl_customers');
+        if (Rbac::hasColumn('tbl_customers', 'owner_user_id')) {
+            $placeholders = implode(',', array_fill(0, count($ownerIds), '?'));
+            $params = array_merge($ownerIds, $ownerIds);
+            return (int) $query
+                ->where_raw("(owner_user_id IN ($placeholders) OR (owner_user_id IS NULL AND created_by IN ($placeholders)))", $params)
+                ->count();
+        }
+
+        return (int) $query->where_in('created_by', $ownerIds)->count();
+    }
+}
+
+if (!function_exists('settings_build_reseller_summary')) {
+    function settings_build_reseller_summary($userId)
+    {
+        $userId = (int) $userId;
+        $children = ORM::for_table('tbl_users')
+            ->where('parent_id', $userId)
+            ->order_by_asc('username')
+            ->find_array();
+
+        $downlineIds = settings_get_downline_user_ids($userId);
+        $totalOwnerIds = array_merge([$userId], $downlineIds);
+
+        return [
+            'direct_customers' => settings_count_customers_for_owner_ids([$userId]),
+            'total_customers' => settings_count_customers_for_owner_ids($totalOwnerIds),
+            'children' => $children,
+            'children_count' => count($children),
+            'downline_count' => count($downlineIds),
+        ];
+    }
+}
+
 switch ($action) {
     case 'docs':
         $d = ORM::for_table('tbl_appconfig')->where('setting', 'docs_clicked')->find_one();
@@ -478,65 +545,97 @@ switch ($action) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $search = _req('search');
+        $filterRoleId = _req('role_id');
+        $filterStatus = _req('status');
+        $filterParentId = _req('parent_id');
+        $roleFilterRoles = Rbac::getAssignableRoles($admin);
+        $roleFilterIds = [];
+        foreach ($roleFilterRoles as $role) {
+            $roleFilterIds[] = (int) $role['id'];
+        }
+        if ($filterRoleId != '' && $filterRoleId != 'none' && !in_array((int) $filterRoleId, $roleFilterIds)) {
+            $filterRoleId = '';
+        }
+
+        $query = ORM::for_table('tbl_users')->order_by_asc('id');
+        $parentQuery = ORM::for_table('tbl_users')
+            ->select('id')
+            ->select('username')
+            ->select('fullname')
+            ->select('user_type')
+            ->order_by_asc('username');
+
+        if ($admin['user_type'] == 'Admin') {
+            $scope = [
+                ['user_type' => 'Report'],
+                ['user_type' => 'Agent'],
+                ['user_type' => 'Sales'],
+                ['id' => $admin['id']],
+            ];
+            $query->where_any_is($scope);
+            $parentQuery->where_any_is($scope);
+        } else if ($admin['user_type'] != 'SuperAdmin') {
+            $scopeIds = Rbac::getScopeUserIds($admin);
+            $query->where_in('id', $scopeIds);
+            $parentQuery->where_in('id', $scopeIds);
+        }
+
         if ($search != '') {
-            if ($admin['user_type'] == 'SuperAdmin') {
-                $query = ORM::for_table('tbl_users')
-                    ->where_like('username', '%' . $search . '%')
-                    ->order_by_asc('id');
-                $d = Paginator::findMany($query, ['search' => $search]);
-            } else if ($admin['user_type'] == 'Admin') {
-                $query = ORM::for_table('tbl_users')
-                    ->where_like('username', '%' . $search . '%')->where_any_is([
-                            ['user_type' => 'Report'],
-                            ['user_type' => 'Agent'],
-                            ['user_type' => 'Sales'],
-                            ['id' => $admin['id']]
-                        ])->order_by_asc('id');
-                $d = Paginator::findMany($query, ['search' => $search]);
+            $query->where_raw('(username LIKE ? OR fullname LIKE ? OR phone LIKE ? OR email LIKE ?)', [
+                '%' . $search . '%',
+                '%' . $search . '%',
+                '%' . $search . '%',
+                '%' . $search . '%',
+            ]);
+        }
+        if ($filterRoleId == 'none') {
+            $query->where_raw('NOT EXISTS (SELECT 1 FROM tbl_user_roles ur WHERE ur.user_id = tbl_users.id)');
+        } else if ((int) $filterRoleId > 0 && in_array((int) $filterRoleId, $roleFilterIds)) {
+            $query->where_raw('EXISTS (SELECT 1 FROM tbl_user_roles ur WHERE ur.user_id = tbl_users.id AND ur.role_id = ?)', [(int) $filterRoleId]);
+        }
+        if ($filterStatus != '' && in_array($filterStatus, ['Active', 'Inactive'])) {
+            $query->where('status', $filterStatus);
+        }
+        if ($filterParentId == 'none') {
+            if (Rbac::hasColumn('tbl_users', 'root')) {
+                $query->where_raw('((parent_id IS NULL OR parent_id = 0) AND (root IS NULL OR root = 0))');
             } else {
-                $scopeIds = Rbac::getScopeUserIds($admin);
-                $query = ORM::for_table('tbl_users')
-                    ->where_like('username', '%' . $search . '%')
-                    ->where_in('id', $scopeIds)
-                    ->order_by_asc('id');
-                $d = Paginator::findMany($query, ['search' => $search]);
+                $query->where_raw('(parent_id IS NULL OR parent_id = 0)');
             }
-        } else {
-            if ($admin['user_type'] == 'SuperAdmin') {
-                $query = ORM::for_table('tbl_users')->order_by_asc('id');
-                $d = Paginator::findMany($query);
-            } else if ($admin['user_type'] == 'Admin') {
-                $query = ORM::for_table('tbl_users')->where_any_is([
-                    ['user_type' => 'Report'],
-                    ['user_type' => 'Agent'],
-                    ['user_type' => 'Sales'],
-                    ['id' => $admin['id']]
-                ])->order_by_asc('id');
-                $d = Paginator::findMany($query);
+        } else if ((int) $filterParentId > 0) {
+            if (Rbac::hasColumn('tbl_users', 'root')) {
+                $query->where_raw('(parent_id = ? OR (parent_id IS NULL AND root = ?))', [(int) $filterParentId, (int) $filterParentId]);
             } else {
-                $scopeIds = Rbac::getScopeUserIds($admin);
-                $query = ORM::for_table('tbl_users')
-                    ->where_in('id', $scopeIds)
-                    ->order_by_asc('id');
-                $d = Paginator::findMany($query);
+                $query->where('parent_id', (int) $filterParentId);
             }
         }
-        $admins = [];
-        foreach ($d as $k) {
-            if (!empty($k['root'])) {
-                $admins[] = $k['root'];
-            }
+
+        $filterParams = [
+            'search' => $search,
+            'role_id' => $filterRoleId,
+            'status' => $filterStatus,
+            'parent_id' => $filterParentId,
+        ];
+        $filterParams = array_filter($filterParams, function ($value) {
+            return $value !== '';
+        });
+        $d = Paginator::findMany($query, $filterParams);
+        if (empty($d)) {
+            $d = [];
         }
-        if (count($admins) > 0) {
-            $adms = ORM::for_table('tbl_users')->where_in('id', $admins)->findArray();
-            unset($admins);
-            foreach ($adms as $adm) {
-                $admins[$adm['id']] = $adm['fullname'];
-            }
+        $parentFilterUsers = $parentQuery->find_array();
+        $resellerSummaries = [];
+        foreach ($d as $row) {
+            $resellerSummaries[$row['id']] = settings_build_reseller_summary($row['id']);
         }
-        $ui->assign('admins', $admins);
+        $ui->assign('resellerSummaries', $resellerSummaries);
         $ui->assign('d', $d);
         $ui->assign('search', $search);
+        $ui->assign('filterRoleId', $filterRoleId);
+        $ui->assign('filterStatus', $filterStatus);
+        $ui->assign('filterParentId', $filterParentId);
+        $ui->assign('roleFilterRoles', $roleFilterRoles);
+        $ui->assign('parentFilterUsers', $parentFilterUsers);
         run_hook('view_list_admin'); #HOOK
         $csrf_token = Csrf::generateAndStoreToken();
         $ui->assign('csrf_token', $csrf_token);
@@ -815,6 +914,7 @@ switch ($action) {
             $parentUsers = ORM::for_table('tbl_users')->where('id', $admin['id'])->find_many();
         }
         $ui->assign('parentUsers', $parentUsers);
+        $ui->assign('availablePlans', ORM::for_table('tbl_plans')->where('enabled', 1)->order_by_asc('type')->order_by_asc('name_plan')->find_many());
         $ui->assign('canAssignAdvancedRole', in_array($admin['user_type'], ['SuperAdmin', 'Admin']) || can('resellers.create', $admin));
         $ui->assign('canCreateReseller', Rbac::canCreateReseller($admin));
         $ui->assign('maxResellerDepth', Rbac::getMaxResellerDepth());
@@ -904,8 +1004,14 @@ switch ($action) {
             }
             $ui->assign('id', $id);
             $ui->assign('d', $d);
+            $currentRoleId = Rbac::getUserRoleId($id);
             $ui->assign('roles', Rbac::getAssignableRoles($admin));
-            $ui->assign('current_role_id', Rbac::getUserRoleId($id));
+            $ui->assign('current_role_id', $currentRoleId);
+            $ui->assign('isTargetReseller', Rbac::isResellerUser($d));
+            $assignedPlanIds = Rbac::getAssignedPackageIds($id);
+            $ui->assign('assignedPlanIds', $assignedPlanIds);
+            $ui->assign('assignedPlanMap', array_fill_keys($assignedPlanIds, true));
+            $ui->assign('availablePlans', ORM::for_table('tbl_plans')->where('enabled', 1)->order_by_asc('type')->order_by_asc('name_plan')->find_many());
             if (in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
                 $parentUsers = ORM::for_table('tbl_users')->where_not_equal('id', $id)->where_in('user_type', ['SuperAdmin', 'Admin', 'Agent', 'Sales'])->order_by_asc('username')->find_many();
             } else {
@@ -916,6 +1022,7 @@ switch ($action) {
             $ui->assign('canCreateReseller', Rbac::canCreateReseller($admin));
             $ui->assign('maxResellerDepth', Rbac::getMaxResellerDepth());
             $ui->assign('nextResellerLevel', ((int) $admin['reseller_level']) + 1);
+            $ui->assign('resellerSummary', settings_build_reseller_summary($id));
             run_hook('view_edit_admin'); #HOOK
             $csrf_token = Csrf::generateAndStoreToken();
             $ui->assign('csrf_token', $csrf_token);
@@ -1077,6 +1184,10 @@ switch ($action) {
                 Rbac::setUserRole($d->id(), $role_id);
             }
             Rbac::syncUserHierarchy($d->id(), $d['parent_id']);
+            if (in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && $isResellerCreate) {
+                $assignedPlanIds = isset($_POST['assigned_plan_ids']) ? (array) $_POST['assigned_plan_ids'] : [];
+                Rbac::setAssignedPackages($d->id(), $assignedPlanIds, $admin['id']);
+            }
 
             if ($send_notif == 'wa') {
                 Message::sendWhatsapp(Lang::phoneFormat($phone), Lang::T('Hello, Your account has been created successfully.') . "\nUsername: $username\nPassword: $password\n\n" . $config['CompanyName']);
@@ -1298,6 +1409,12 @@ switch ($action) {
                 Rbac::setUserRole($id, $role_id);
             }
             Rbac::syncUserHierarchy($id, $d['parent_id']);
+            if (($admin['id']) != $id && in_array($admin['user_type'], ['SuperAdmin', 'Admin']) && $isResellerEdit) {
+                $assignedPlanIds = isset($_POST['assigned_plan_ids']) ? (array) $_POST['assigned_plan_ids'] : [];
+                Rbac::setAssignedPackages($id, $assignedPlanIds, $admin['id']);
+            } else if (($admin['id']) != $id && !$isResellerEdit) {
+                Rbac::setAssignedPackages($id, [], $admin['id']);
+            }
 
             _log('[' . $admin['username'] . ']: $username ' . Lang::T('User Updated Successfully'), $admin['user_type'], $admin['id']);
             r2(getUrl('settings/users-view/') . $id, 's', 'User Updated Successfully');

@@ -274,6 +274,82 @@ class Rbac
         return $admin['user_type'] == 'Agent';
     }
 
+    public static function getAssignedPackageIds($resellerId)
+    {
+        $resellerId = (int) $resellerId;
+        if (!$resellerId || !self::tableExists('tbl_reseller_packages')) {
+            return [];
+        }
+
+        $rows = ORM::for_table('tbl_reseller_packages')
+            ->select('plan_id')
+            ->where('reseller_id', $resellerId)
+            ->where('status', 'Active')
+            ->find_array();
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $ids[] = (int) $row['plan_id'];
+        }
+        return array_values(array_unique($ids));
+    }
+
+    public static function setAssignedPackages($resellerId, $planIds, $assignedBy = null)
+    {
+        $resellerId = (int) $resellerId;
+        if (!$resellerId || !self::tableExists('tbl_reseller_packages')) {
+            return;
+        }
+
+        $planIds = array_values(array_unique(array_map('intval', (array) $planIds)));
+        ORM::for_table('tbl_reseller_packages')->where('reseller_id', $resellerId)->delete_many();
+
+        foreach ($planIds as $planId) {
+            if (!$planId) {
+                continue;
+            }
+            $row = ORM::for_table('tbl_reseller_packages')->create();
+            $row->reseller_id = $resellerId;
+            $row->plan_id = $planId;
+            $row->status = 'Active';
+            $row->assigned_by = $assignedBy ? (int) $assignedBy : null;
+            $row->created_at = date('Y-m-d H:i:s');
+            $row->updated_at = date('Y-m-d H:i:s');
+            $row->save();
+        }
+    }
+
+    public static function scopePlans($query, $admin = null)
+    {
+        if ($admin === null) {
+            $admin = Admin::_info();
+        }
+        if (empty($admin) || !self::isResellerUser($admin) || self::hasGlobalDataScope($admin)) {
+            return $query;
+        }
+
+        $planIds = self::getAssignedPackageIds((int) $admin['id']);
+        if (empty($planIds)) {
+            return $query->where_raw('1 = 0');
+        }
+        return $query->where_in('id', $planIds);
+    }
+
+    public static function canUsePlan($planId, $admin = null)
+    {
+        $planId = (int) $planId;
+        if (!$planId) {
+            return false;
+        }
+        if ($admin === null) {
+            $admin = Admin::_info();
+        }
+        if (empty($admin) || !self::isResellerUser($admin) || self::hasGlobalDataScope($admin)) {
+            return true;
+        }
+        return in_array($planId, self::getAssignedPackageIds((int) $admin['id']));
+    }
+
     public static function hasColumn($table, $column)
     {
         try {
@@ -621,6 +697,18 @@ class Rbac
             depth INT UNSIGNED NOT NULL DEFAULT 0,
             PRIMARY KEY (ancestor_id, descendant_id),
             INDEX idx_user_hierarchy_descendant_id (descendant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS tbl_reseller_packages (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            reseller_id INT UNSIGNED NOT NULL,
+            plan_id INT UNSIGNED NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'Active',
+            assigned_by INT UNSIGNED NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            UNIQUE KEY uniq_reseller_package (reseller_id, plan_id),
+            INDEX idx_reseller_packages_plan_id (plan_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         self::addColumnIfMissing('tbl_users', 'parent_id', 'INT UNSIGNED NULL');

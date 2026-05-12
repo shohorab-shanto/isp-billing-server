@@ -181,6 +181,9 @@ switch ($action) {
             $channel = $admin['fullname'];
             $cust = User::_info($id_customer);
             $plan = ORM::for_table('tbl_plans')->find_one($planId);
+            if (!$plan || !Rbac::canUsePlan($planId, $admin)) {
+                r2(getUrl('plan/recharge'), 'e', Lang::T('Plan not found'));
+            }
             list($bills, $add_cost) = User::getBills($id_customer);
             $add_inv = User::getAttribute("Invoice", $id_customer);
             if (!empty($add_inv)) {
@@ -257,6 +260,9 @@ switch ($action) {
         $svoucher = _post('svoucher');
 
         $plan = ORM::for_table('tbl_plans')->find_one($planId);
+        if (!$plan || !Rbac::canUsePlan($planId, $admin)) {
+            r2(getUrl('plan/recharge'), 'e', Lang::T('Plan not found'));
+        }
 
         if (!empty(App::getVoucherValue($svoucher))) {
             $username = App::getVoucherValue($svoucher);

@@ -1157,5 +1157,19 @@
     "Assigned_roles_cannot_be_deleted__Remove_this_role_from_users_first_": "Assigned roles cannot be deleted. Remove this role from users first.",
     "You_do_not_have_permission_to_access_this_page": "You do not have permission to access this page",
     "Community": "Community",
-    "Data_Scope": "Data Scope"
+    "Data_Scope": "Data Scope",
+    "Assigned_Packages": "Assigned Packages",
+    "Only_selected_packages_will_be_available_for_this_reseller_in_Quick_Add": "Only selected packages will be available for this reseller in Quick Add",
+    "Available_Packages": "Available Packages",
+    "Search_package": "Search package",
+    "Only_selected_packages_will_be_available_for_this_reseller_in_Quick_Add_and_Recharge": "Only selected packages will be available for this reseller in Quick Add and Recharge",
+    "Sub_Resellers": "Sub Resellers",
+    "All_Types": "All Types",
+    "All_Parents": "All Parents",
+    "No_Parent": "No Parent",
+    "No_data_found": "No data found",
+    "All_Roles": "All Roles",
+    "Add_New": "Add New",
+    "Add_Admin": "Add Admin",
+    "Clear_All": "Clear All"
 }

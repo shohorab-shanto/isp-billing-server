@@ -105,6 +105,44 @@
                                 <input type="number" class="form-control" name="reseller_level" value="{if $_admin['user_type'] eq 'SuperAdmin' || $_admin['user_type'] eq 'Admin'}0{else}{$nextResellerLevel}{/if}" min="0" max="{$maxResellerDepth}" {if $_admin['user_type'] neq 'SuperAdmin' && $_admin['user_type'] neq 'Admin'}readonly{/if}>
                             </div>
                         </div>
+                        {if $_admin['user_type'] eq 'SuperAdmin' || $_admin['user_type'] eq 'Admin'}
+                            <div class="form-group reseller-package-field hidden">
+                                <label class="col-md-3 control-label">{Lang::T('Assigned Packages')}</label>
+                                <div class="col-md-9">
+                                    <div class="well well-sm" style="margin-bottom: 0;">
+                                        <div class="row" style="margin-bottom: 8px;">
+                                            <div class="col-sm-7">
+                                                <input type="text" class="form-control input-sm" id="packageSearch" placeholder="{Lang::T('Search package')}">
+                                            </div>
+                                            <div class="col-sm-5 text-right">
+                                                <button type="button" class="btn btn-xs btn-default" id="selectAllPackages">{Lang::T('Select All')}</button>
+                                                <button type="button" class="btn btn-xs btn-default" id="clearAllPackages">{Lang::T('Clear')}</button>
+                                            </div>
+                                        </div>
+                                        <div style="max-height: 220px; overflow-y: auto; border: 1px solid #ddd; background: #fff;">
+                                            <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                                <tbody>
+                                                    {foreach $availablePlans as $plan}
+                                                        <tr class="package-option" data-package-text="{$plan['name_plan']|lower|escape:'html'} {$plan['type']|lower|escape:'html'} {$plan['routers']|lower|escape:'html'}">
+                                                            <td style="width: 30px;"><input type="checkbox" name="assigned_plan_ids[]" value="{$plan['id']}"></td>
+                                                            <td>
+                                                                <strong>{$plan['name_plan']}</strong>
+                                                                <span class="text-muted">{$plan['type']}{if $plan['routers']} | {$plan['routers']}{/if}</span>
+                                                            </td>
+                                                            <td class="text-right" style="width: 100px;">{Lang::moneyFormat($plan['price'])}</td>
+                                                        </tr>
+                                                    {/foreach}
+                                                    {if count($availablePlans) == 0}
+                                                        <tr><td class="text-muted">{Lang::T('No enabled package found')}.</td></tr>
+                                                    {/if}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <span class="help-block">{Lang::T('Only selected packages will be available for this reseller in Quick Add and Recharge')}.</span>
+                                </div>
+                            </div>
+                        {/if}
                     {/if}
                     <div class="form-group">
                         <label class="col-md-3 control-label">{Lang::T('Username')}</label>
@@ -155,8 +193,10 @@
             var isReseller = roleType == 'reseller' || (roleType == '' && userType == 'Agent');
             if(isReseller){
                 $('.reseller-field').removeClass('hidden');
+                $('.reseller-package-field').removeClass('hidden');
             }else{
                 $('.reseller-field').addClass('hidden');
+                $('.reseller-package-field').addClass('hidden');
                 $('[name="parent_id"]').val('');
                 $('[name="reseller_level"]').val('0');
             }
@@ -164,6 +204,20 @@
 
         $(function(){
             toggleResellerFields();
+            $('#selectAllPackages').on('click', function(){
+                $('.package-option:visible input[type="checkbox"]').prop('checked', true);
+            });
+            $('#clearAllPackages').on('click', function(){
+                $('.reseller-package-field input[type="checkbox"]').prop('checked', false);
+            });
+            $('#packageSearch').on('keyup', function(){
+                var search = ($(this).val() || '').toLowerCase();
+                $('.package-option').each(function(){
+                    var haystack = $(this).data('package-text') || '';
+                    $(this).toggle(haystack.indexOf(search) !== -1);
+                });
+                $('.package-type-heading').show();
+            });
         });
 </script>
 {/literal}

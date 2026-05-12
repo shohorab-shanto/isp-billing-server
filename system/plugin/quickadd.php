@@ -18,8 +18,8 @@
 	if ($routes['2'] == 'pppoe') {
         $pltype = 'PPPOE';
 	}
-    $hotspotPlanCount = ORM::for_table('tbl_plans')->where('type', 'Hotspot')->where('enabled', 1)->count();
-    $pppoePlanCount = ORM::for_table('tbl_plans')->where('type', 'PPPOE')->where('enabled', 1)->count();
+    $hotspotPlanCount = Rbac::scopePlans(ORM::for_table('tbl_plans')->where('type', 'Hotspot')->where('enabled', 1), $admin)->count();
+    $pppoePlanCount = Rbac::scopePlans(ORM::for_table('tbl_plans')->where('type', 'PPPOE')->where('enabled', 1), $admin)->count();
     if (empty($routes['2']) && $hotspotPlanCount == 0 && $pppoePlanCount > 0) {
         $routes['2'] = 'pppoe';
         $pltype = 'PPPOE';
@@ -27,7 +27,7 @@
     $ui->assign('routes', $routes);
     $ui->assign('hotspotPlanCount', $hotspotPlanCount);
     $ui->assign('pppoePlanCount', $pppoePlanCount);
-    $plans = ORM::for_table('tbl_plans')->where('type', $pltype)->where('enabled', 1)->find_many();
+    $plans = Rbac::scopePlans(ORM::for_table('tbl_plans')->where('type', $pltype)->where('enabled', 1), $admin)->find_many();
     $ui->assign('plans', $plans);
     
     $zero = 0;
@@ -106,7 +106,7 @@
             $d->city = $city;
             $d->save();
             $plan = ORM::for_table('tbl_plans')->where('enabled', 1)->find_one($ppln);
-            if (!$plan) {
+            if (!$plan || !Rbac::canUsePlan($ppln, $admin)) {
                 r2(U . "plugin/quickadd".$rdrct, 'e', Lang::T('Select Package first!'));
             }
             $server = $plan['routers'];
