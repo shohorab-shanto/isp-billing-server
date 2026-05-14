@@ -7,6 +7,8 @@ class top_widget
     {
         global $ui, $current_date, $start_date;
         $admin = Admin::_info();
+        $showIncomeWidget = in_array($admin['user_type'], ['SuperAdmin', 'Admin', 'Report']) || Rbac::isResellerUser($admin);
+        $ui->assign('showIncomeWidget', $showIncomeWidget);
 
         $iday = Rbac::scopeOwned(ORM::for_table('tbl_transactions'), 'tbl_transactions', $admin)
             ->where('recharged_on', $current_date)

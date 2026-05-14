@@ -1173,5 +1173,7 @@
     "Add_Admin": "Add Admin",
     "Clear_All": "Clear All",
     "User": "User",
-    "Activity": "Activity"
+    "Activity": "Activity",
+    "Reseller_Summary": "Reseller Summary",
+    "Direct_Customers": "Direct Customers"
 }

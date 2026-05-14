@@ -1,5 +1,5 @@
 <div class="row">
-    {if in_array($_admin['user_type'],['SuperAdmin','Admin', 'Report'])}
+    {if $showIncomeWidget}
         <div class="col-lg-3 col-xs-6">
             <div class="small-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);">
                 <div class="inner">
