@@ -1171,5 +1171,7 @@
     "All_Roles": "All Roles",
     "Add_New": "Add New",
     "Add_Admin": "Add Admin",
-    "Clear_All": "Clear All"
+    "Clear_All": "Clear All",
+    "User": "User",
+    "Activity": "Activity"
 }

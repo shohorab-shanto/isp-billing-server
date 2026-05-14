@@ -624,11 +624,36 @@ switch ($action) {
             $d = [];
         }
         $parentFilterUsers = $parentQuery->find_array();
+        $userRoles = [];
+        $userIds = [];
+        foreach ($d as $row) {
+            $userIds[] = (int) $row['id'];
+        }
+        if (!empty($userIds)) {
+            $roleRows = ORM::for_table('tbl_user_roles')
+                ->table_alias('ur')
+                ->select('ur.user_id')
+                ->select('r.name', 'role_name')
+                ->select('r.slug', 'role_slug')
+                ->select('r.type', 'role_type')
+                ->inner_join('tbl_roles', ['ur.role_id', '=', 'r.id'], 'r')
+                ->where_in('ur.user_id', array_values(array_unique($userIds)))
+                ->order_by_desc('r.level')
+                ->find_array();
+            foreach ($roleRows as $roleRow) {
+                $userId = (int) $roleRow['user_id'];
+                if (!isset($userRoles[$userId])) {
+                    $userRoles[$userId] = [];
+                }
+                $userRoles[$userId][] = $roleRow;
+            }
+        }
         $resellerSummaries = [];
         foreach ($d as $row) {
             $resellerSummaries[$row['id']] = settings_build_reseller_summary($row['id']);
         }
         $ui->assign('resellerSummaries', $resellerSummaries);
+        $ui->assign('userRoles', $userRoles);
         $ui->assign('d', $d);
         $ui->assign('search', $search);
         $ui->assign('filterRoleId', $filterRoleId);

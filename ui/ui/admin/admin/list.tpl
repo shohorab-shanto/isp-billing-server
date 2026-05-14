@@ -73,15 +73,12 @@
                     <table class="table table-bordered table-striped table-condensed">
                         <thead>
                             <tr>
-                                <th>{Lang::T('Username')}</th>
-                                <th>{Lang::T('Full Name')}</th>
-                                <th>{Lang::T('Phone')}</th>
-                                <th>{Lang::T('Email')}</th>
+                                <th>{Lang::T('User')}</th>
+                                <th>{Lang::T('Contact')}</th>
                                 <th>{Lang::T('Type')}</th>
                                 <th>{Lang::T('Customers')}</th>
                                 <th>{Lang::T('Sub Resellers')}</th>
-                                <th>{Lang::T('Location')}</th>
-                                <th>{Lang::T('Last Login')}</th>
+                                <th>{Lang::T('Activity')}</th>
                                 <th>{Lang::T('Manage')}</th>
                                 <th>ID</th>
                             </tr>
@@ -89,11 +86,32 @@
                         <tbody>
                             {foreach $d as $ds}
                                 <tr {if $ds['status'] != 'Active'}class="danger"{/if}>
-                                    <td>{$ds['username']}</td>
-                                    <td>{$ds['fullname']}</td>
-                                    <td>{$ds['phone']}</td>
-                                    <td>{$ds['email']}</td>
-                                    <td>{$ds['user_type']}</td>
+                                    <td>
+                                        <strong>{$ds['username']}</strong>
+                                        {if $ds['fullname']}
+                                            <div class="text-muted" style="font-size: 12px; line-height: 1.35;">{$ds['fullname']}</div>
+                                        {/if}
+                                    </td>
+                                    <td>
+                                        {if $ds['phone']}
+                                            <div>{$ds['phone']}</div>
+                                        {/if}
+                                        {if $ds['email']}
+                                            <div class="text-muted" style="font-size: 12px; line-height: 1.35;">{$ds['email']}</div>
+                                        {/if}
+                                    </td>
+                                    <td>
+                                        <strong>{$ds['user_type']}</strong>
+                                        <div class="text-muted" style="font-size: 12px; line-height: 1.35;">
+                                            {if isset($userRoles[$ds['id']]) && count($userRoles[$ds['id']]) gt 0}
+                                                {foreach $userRoles[$ds['id']] as $role name=roleLoop}
+                                                    {$role['role_name']} <span class="label label-default">{$role['role_type']}</span>{if !$smarty.foreach.roleLoop.last}<br>{/if}
+                                                {/foreach}
+                                            {else}
+                                                {Lang::T('Default')}
+                                            {/if}
+                                        </div>
+                                    </td>
                                     <td>
                                         {assign var=summary value=$resellerSummaries[$ds['id']]}
                                         <strong>{$summary['direct_customers']}</strong>
@@ -111,8 +129,18 @@
                                             </div>
                                         {/if}
                                     </td>
-                                    <td>{$ds['city']}, {$ds['subdistrict']}, {$ds['ward']}</td>
-                                    <td>{if $ds['last_login']}{Lang::timeElapsed($ds['last_login'])}{/if}</td>
+                                    <td>
+                                        <div>
+                                            {if $ds['city'] || $ds['subdistrict'] || $ds['ward']}
+                                                {$ds['city']}, {$ds['subdistrict']}, {$ds['ward']}
+                                            {else}
+                                                <span class="text-muted">-</span>
+                                            {/if}
+                                        </div>
+                                        <div class="text-muted" style="font-size: 12px; line-height: 1.35;">
+                                            {Lang::T('Last Login')}: {if $ds['last_login']}{Lang::timeElapsed($ds['last_login'])}{else}-{/if}
+                                        </div>
+                                    </td>
                                     <td>
                                         <a href="{Text::url('settings/users-view/',$ds['id'])}"
                                             class="btn btn-success btn-xs">{Lang::T('View')}</a>
@@ -128,7 +156,7 @@
                             {/foreach}
                             {if count($d) == 0}
                                 <tr>
-                                    <td colspan="11" class="text-center text-muted">{Lang::T('No data found')}</td>
+                                    <td colspan="8" class="text-center text-muted">{Lang::T('No data found')}</td>
                                 </tr>
                             {/if}
                         </tbody>
