@@ -1175,5 +1175,8 @@
     "User": "User",
     "Activity": "Activity",
     "Reseller_Summary": "Reseller Summary",
-    "Direct_Customers": "Direct Customers"
+    "Direct_Customers": "Direct Customers",
+    "Income": "Income",
+    "Today": "Today",
+    "This_Month": "This Month"
 }

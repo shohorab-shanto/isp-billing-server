@@ -77,6 +77,7 @@
                                 <th>{Lang::T('Contact')}</th>
                                 <th>{Lang::T('Type')}</th>
                                 <th>{Lang::T('Customers')}</th>
+                                <th>{Lang::T('Income')}</th>
                                 <th>{Lang::T('Sub Resellers')}</th>
                                 <th>{Lang::T('Activity')}</th>
                                 <th>{Lang::T('Manage')}</th>
@@ -120,6 +121,16 @@
                                         {/if}
                                     </td>
                                     <td>
+                                        {assign var=income value=$userIncomeSummaries[$ds['id']]}
+                                        <div>
+                                            <strong>{$_c['currency_code']} {number_format($income['today'],0,$_c['dec_point'],$_c['thousands_sep'])}</strong>
+                                            <span class="text-muted" style="font-size: 12px;">{Lang::T('Today')}</span>
+                                        </div>
+                                        <div class="text-muted" style="font-size: 12px; line-height: 1.35;">
+                                            {$_c['currency_code']} {number_format($income['month'],0,$_c['dec_point'],$_c['thousands_sep'])} {Lang::T('This Month')}
+                                        </div>
+                                    </td>
+                                    <td>
                                         <strong>{$summary['children_count']}</strong>
                                         {if $summary['children_count'] gt 0}
                                             <div class="text-muted" style="max-width: 220px; white-space: normal;">
@@ -156,7 +167,7 @@
                             {/foreach}
                             {if count($d) == 0}
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted">{Lang::T('No data found')}</td>
+                                    <td colspan="9" class="text-center text-muted">{Lang::T('No data found')}</td>
                                 </tr>
                             {/if}
                         </tbody>

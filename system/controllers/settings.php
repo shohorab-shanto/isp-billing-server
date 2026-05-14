@@ -648,12 +648,56 @@ switch ($action) {
                 $userRoles[$userId][] = $roleRow;
             }
         }
+        $reset_day = !empty($config['reset_day']) ? (int) $config['reset_day'] : 1;
+        $current_date = date('Y-m-d');
+        if ((int) date('d') >= $reset_day) {
+            $start_date = date('Y-m-' . $reset_day);
+        } else {
+            $start_date = date('Y-m-' . $reset_day, strtotime("-1 MONTH"));
+        }
+
+        $userIncomeSummaries = [];
+        foreach ($userIds as $userId) {
+            $userIncomeSummaries[$userId] = [
+                'today' => 0,
+                'month' => 0,
+            ];
+        }
+        if (!empty($userIds) && Rbac::hasColumn('tbl_transactions', 'owner_user_id')) {
+            $todayRows = ORM::for_table('tbl_transactions')
+                ->select('owner_user_id')
+                ->select_expr('SUM(CAST(price AS DECIMAL(12,2)))', 'total')
+                ->where_in('owner_user_id', array_values(array_unique($userIds)))
+                ->where('recharged_on', $current_date)
+                ->where_not_equal('method', 'Customer - Balance')
+                ->where_not_equal('method', 'Recharge Balance - Administrator')
+                ->group_by('owner_user_id')
+                ->find_array();
+            foreach ($todayRows as $incomeRow) {
+                $userIncomeSummaries[(int) $incomeRow['owner_user_id']]['today'] = (float) $incomeRow['total'];
+            }
+
+            $monthRows = ORM::for_table('tbl_transactions')
+                ->select('owner_user_id')
+                ->select_expr('SUM(CAST(price AS DECIMAL(12,2)))', 'total')
+                ->where_in('owner_user_id', array_values(array_unique($userIds)))
+                ->where_gte('recharged_on', $start_date)
+                ->where_lte('recharged_on', $current_date)
+                ->where_not_equal('method', 'Customer - Balance')
+                ->where_not_equal('method', 'Recharge Balance - Administrator')
+                ->group_by('owner_user_id')
+                ->find_array();
+            foreach ($monthRows as $incomeRow) {
+                $userIncomeSummaries[(int) $incomeRow['owner_user_id']]['month'] = (float) $incomeRow['total'];
+            }
+        }
         $resellerSummaries = [];
         foreach ($d as $row) {
             $resellerSummaries[$row['id']] = settings_build_reseller_summary($row['id']);
         }
         $ui->assign('resellerSummaries', $resellerSummaries);
         $ui->assign('userRoles', $userRoles);
+        $ui->assign('userIncomeSummaries', $userIncomeSummaries);
         $ui->assign('d', $d);
         $ui->assign('search', $search);
         $ui->assign('filterRoleId', $filterRoleId);
