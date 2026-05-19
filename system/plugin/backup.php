@@ -1,5 +1,9 @@
 <?php
-register_menu("Backup/Restore DB", true, "backup_list", 'SETTINGS', '');
+register_menu("Backup/Restore DB", true, "backup_list", 'SETTINGS', '', '', 'success', [], 'settings.backup_db');
+register_plugin_route("backup_list", 'settings.backup_db', true, false);
+register_plugin_route("backup_download", 'settings.backup_db', true, false);
+register_plugin_route("backup_delete", 'settings.backup_db', true, false);
+register_plugin_route("backup_add", 'settings.backup_db', true, false);
 register_hook('cronjob', 'backup_cron');
 
 if ($_SERVER['REQUEST_URI'] === '/plugin/backup_list') {
@@ -20,7 +24,7 @@ function backup_list(): void
     $admin = Admin::_info();
     $ui->assign('_admin', $admin);
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.backup_db', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }
@@ -85,7 +89,7 @@ function backup_add($is_CLi = false)
     if (!$is_CLi) {
         _admin();
         $admin = Admin::_info();
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.backup_db', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
             exit;
         }
@@ -141,7 +145,7 @@ function backup_download(): void
     _admin();
     $admin = Admin::_info();
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.backup_db', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }
@@ -182,7 +186,7 @@ function backup_delete(): void
     _admin();
     $admin = Admin::_info();
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.backup_db', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }
@@ -222,7 +226,7 @@ function backup_restore(): void
     $backupDir = "$UPLOAD_PATH/backup";
     _admin();
     $admin = Admin::_info();
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.backup_db', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }
@@ -561,7 +565,7 @@ function backup_upload_form(): void
     _admin();
     $admin = Admin::_info();
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.backup_db', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }

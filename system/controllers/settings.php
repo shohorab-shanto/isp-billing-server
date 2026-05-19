@@ -93,6 +93,9 @@ switch ($action) {
         r2(APP_URL . '/docs');
         break;
     case 'devices':
+        if (!can('settings.devices', $admin)) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
         $files = scandir($DEVICE_PATH);
         $devices = [];
         foreach ($files as $file) {
@@ -120,7 +123,7 @@ switch ($action) {
         $ui->display('admin/settings/devices.tpl');
         break;
     case 'app':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.general', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
 
@@ -253,7 +256,7 @@ switch ($action) {
             r2(getUrl('settings/app'), 'e', 'You cannot perform this action in Demo mode');
         }
 
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.general', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $csrf_token = _post('csrf_token');
@@ -403,7 +406,7 @@ switch ($action) {
         break;
 
     case 'localisation':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.localisation', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $folders = [];
@@ -432,7 +435,7 @@ switch ($action) {
         break;
 
     case 'localisation-post':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.localisation', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         if ($_app_stage == 'Demo') {
@@ -1102,9 +1105,6 @@ switch ($action) {
         break;
 
     case 'users-delete':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
-            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
-        }
         if (!can('settings.users', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
@@ -1543,7 +1543,7 @@ switch ($action) {
         break;
 
     case 'notifications':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.notifications', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         run_hook('view_notifications'); #HOOK
@@ -1562,7 +1562,7 @@ switch ($action) {
         if ($_app_stage == 'Demo') {
             r2(getUrl('settings/notifications'), 'e', 'You cannot perform this action in Demo mode');
         }
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.notifications', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $csrf_token = _post('csrf_token');
@@ -1573,7 +1573,7 @@ switch ($action) {
         r2(getUrl('settings/notifications'), 's', Lang::T('Settings Saved Successfully'));
         break;
     case 'dbstatus':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.backup', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
 
@@ -1594,7 +1594,7 @@ switch ($action) {
         if ($_app_stage == 'Demo') {
             r2(getUrl('settings/dbstatus'), 'e', 'You cannot perform this action in Demo mode');
         }
-        if (!in_array($admin['user_type'], ['SuperAdmin'])) {
+        if (!can('settings.backup', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         $tables = $_POST['tables'];
@@ -1617,7 +1617,7 @@ switch ($action) {
         if ($_app_stage == 'Demo') {
             r2(getUrl('settings/dbstatus'), 'e', 'You cannot perform this action in Demo mode');
         }
-        if (!in_array($admin['user_type'], ['SuperAdmin'])) {
+        if (!can('settings.backup', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         if (file_exists($_FILES['json']['tmp_name'])) {
@@ -1672,7 +1672,7 @@ switch ($action) {
         }
         break;
     case 'language':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.localisation', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         }
         run_hook('view_add_language'); #HOOK
@@ -1699,7 +1699,7 @@ switch ($action) {
         break;
 
     case 'maintenance':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.maintenance', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
             exit;
         }
@@ -1745,7 +1745,7 @@ switch ($action) {
         break;
 
     case 'miscellaneous':
-        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        if (!can('settings.miscellaneous', $admin)) {
             _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
             exit;
         }

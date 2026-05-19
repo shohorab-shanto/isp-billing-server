@@ -6,6 +6,9 @@
  **/
 
 _admin();
+if (!can('settings.custom_fields', $admin)) {
+    r2(getUrl('dashboard'), 'e', Lang::T('You do not have permission to access this page'));
+}
 $ui->assign('_title', Lang::T('Custom Fields'));
 $ui->assign('_system_menu', 'settings');
 

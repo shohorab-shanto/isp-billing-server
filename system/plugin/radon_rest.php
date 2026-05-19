@@ -1,6 +1,7 @@
 <?php
 
-register_menu("Users Online", true, "radon_users_rest", 'RADIUS', '');
+register_menu("Users Online", true, "radon_users_rest", 'RADIUS', '', '', 'success', [], 'radius.rest_online_users');
+register_plugin_route("radon_users_rest", 'radius.rest_online_users', true, false);
 
 function radon_users_rest()
 {
@@ -10,6 +11,9 @@ function radon_users_rest()
 	$ui->assign('_system_menu', 'radius');
 	$admin = Admin::_info();
 	$ui->assign('_admin', $admin);
+	if (!can('radius.rest_online_users', $admin)) {
+		r2(getUrl('dashboard'), 'e', Lang::T('You do not have permission to access this page'));
+	}
 
 	$error = [];
 	$success = [];

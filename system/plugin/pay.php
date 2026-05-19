@@ -8,7 +8,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-register_menu("Payment Page Settings", true, "pay_setup", 'SETTINGS', '', '', "");
+register_menu("Payment Page Settings", true, "pay_setup", 'SETTINGS', '', '', 'success', [], 'settings.payment_page');
+register_plugin_route("pay_setup", 'settings.payment_page', true, false);
 
 function pay_setup()
 {
@@ -18,7 +19,7 @@ function pay_setup()
     $admin = Admin::_info();
     $ui->assign('_admin', $admin);
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.payment_page', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }

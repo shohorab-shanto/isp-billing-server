@@ -10,7 +10,7 @@ $ui->assign('_system_menu', 'settings');
 
 $action = alphanumeric($routes['1']);
 $ui->assign('_admin', $admin);
-if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+if (!can('settings.widgets', $admin)) {
     r2(getUrl('dashboard'), 'e', Lang::T('You do not have permission to access this page'));
 }
 

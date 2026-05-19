@@ -1178,5 +1178,7 @@
     "Direct_Customers": "Direct Customers",
     "Income": "Income",
     "Today": "Today",
-    "This_Month": "This Month"
+    "This_Month": "This Month",
+    "_Cleared_the_system_cache_": " Cleared the system cache ",
+    "Cache_cleared_successfully_": "Cache cleared successfully!"
 }

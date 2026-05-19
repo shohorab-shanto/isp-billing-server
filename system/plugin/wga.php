@@ -14,7 +14,18 @@
  *
  **/
 
-register_menu("Alt WA Gateway", true, "wga_config", 'SETTINGS', '', '', "");
+register_menu("Alt WA Gateway", true, "wga_config", 'SETTINGS', '', '', 'success', [], 'settings.alt_wa_gateway');
+register_plugin_route("wga_config", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_createDevice", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_addDevice", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_setActiveDevice", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_getQrCode", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_getPairingCode", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_logoutDevice", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_deleteDevice", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_reconnect", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_saveDeviceId", 'settings.alt_wa_gateway', true, false);
+register_plugin_route("wga_getDevices", 'settings.alt_wa_gateway', true, false);
 register_hook('cronjob', 'wga_cron');
 
 // Debug mode flag - set to true only for development/troubleshooting
@@ -107,7 +118,7 @@ function wga_config()
     $admin = Admin::_info();
     $ui->assign('_admin', $admin);
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }
@@ -957,7 +968,7 @@ function wga_createDevice()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1079,7 +1090,7 @@ function wga_setActiveDevice()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1125,7 +1136,7 @@ function wga_getQrCode()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1229,7 +1240,7 @@ function wga_getPairingCode()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1315,7 +1326,7 @@ function wga_logoutDevice()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1370,7 +1381,7 @@ function wga_deleteDevice()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1424,7 +1435,7 @@ function wga_reconnect()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1479,7 +1490,7 @@ function wga_saveDeviceId()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }
@@ -1524,7 +1535,7 @@ function wga_getDevices()
 
     header('Content-Type: application/json');
 
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.alt_wa_gateway', $admin)) {
         echo json_encode(['success' => false, 'message' => 'Permission denied']);
         exit;
     }

@@ -1,6 +1,7 @@
 <?php
 
-register_menu("Clear System Cache", true, "clear_cache", 'SETTINGS', '');
+register_menu("Clear System Cache", true, "clear_cache", 'SETTINGS', '', '', 'success', [], 'settings.clear_cache');
+register_plugin_route("clear_cache", 'settings.clear_cache', true, false);
 
 function clear_cache()
 {
@@ -12,7 +13,7 @@ function clear_cache()
     $ui->assign('_admin', $admin);
 
     // Check user type for access
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+    if (!can('settings.clear_cache', $admin)) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
         exit;
     }

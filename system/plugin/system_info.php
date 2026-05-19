@@ -1,5 +1,6 @@
 <?php
-register_menu("System Info", true, "system_info", 'SETTINGS', '');
+register_menu("System Info", true, "system_info", 'SETTINGS', '', '', 'success', [], 'settings.system_info');
+register_plugin_route("system_info", 'settings.system_info', true, false);
 
 /**
  * Bismillahir Rahmanir Raheem
@@ -26,6 +27,10 @@ function system_info()
     $ui->assign('_system_menu', 'settings');
     $admin = Admin::_info();
     $ui->assign('_admin', $admin);
+    if (!can('settings.system_info', $admin)) {
+        _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        exit;
+    }
     if (!function_exists('shell_exec') || !function_exists('exec')) {
         $ui->assign('message', '<em>' . Lang::T("SHELL_EXEC function is not enabled on your server. Some functions may not work as expected.") . '</em>');
     }
@@ -37,7 +42,7 @@ function system_info()
         if ($_app_stage == 'Demo') {
             $output['error'] = Lang::T('You cannot perform this action in Demo mode');
             $retcode = 1;
-        } elseif (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        } elseif (!can('settings.system_info', $admin)) {
             $output['error'] = Lang::T('You do not have permission to access this page');
             $retcode = 1;
         } elseif (!function_exists('shell_exec') || !function_exists('exec')) {
@@ -483,12 +488,25 @@ function system_info_getCpuInfo()
     $cpuInfo['model'] = $cpuInfo['model'] ?? 'N/A';
     $cpuInfo['cores'] = $cpuInfo['cores'] ?? 1;
 
-    // Get CPU usage (cross-platform)
-    $load = sys_getloadavg();
-    $cpuInfo['load_1min'] = $load[0];
-    $cpuInfo['load_5min'] = $load[1];
-    $cpuInfo['load_15min'] = $load[2];
-    $cpuInfo['usage_percentage'] = round(($load[0] / $cpuInfo['cores']) * 100, 2);
+    $load = [0, 0, 0];
+    $usagePercentage = null;
+    if (function_exists('sys_getloadavg')) {
+        $load = sys_getloadavg();
+        if (!is_array($load)) {
+            $load = [0, 0, 0];
+        }
+        $usagePercentage = round(((float) $load[0] / max((int) $cpuInfo['cores'], 1)) * 100, 2);
+    } elseif ($os === 'WIN' && function_exists('shell_exec')) {
+        $usage = trim((string) shell_exec('wmic cpu get loadpercentage /value'));
+        if (preg_match('/LoadPercentage=(\d+)/i', $usage, $matches)) {
+            $usagePercentage = (float) $matches[1];
+        }
+    }
+
+    $cpuInfo['load_1min'] = $load[0] ?? 0;
+    $cpuInfo['load_5min'] = $load[1] ?? 0;
+    $cpuInfo['load_15min'] = $load[2] ?? 0;
+    $cpuInfo['usage_percentage'] = $usagePercentage ?? 0;
 
     return $cpuInfo;
 }

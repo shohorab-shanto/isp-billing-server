@@ -2,7 +2,9 @@
 
 use PEAR2\Net\RouterOS;
 
-register_menu("Mikrotik Import", true, "mikrotik_import_ui", 'SETTINGS', '');
+register_menu("Mikrotik Import", true, "mikrotik_import_ui", 'SETTINGS', '', '', 'success', [], 'settings.mikrotik_import');
+register_plugin_route("mikrotik_import_ui", 'settings.mikrotik_import', true, false);
+register_plugin_route("mikrotik_import_start_ui", 'settings.mikrotik_import', true, false);
 
 function mikrotik_import_ui()
 {

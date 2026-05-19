@@ -3,7 +3,8 @@
 // Include the configuration file
 include('/var/www/html/config.php');
 
-register_menu("Radius NAS Status", true, "nas_status", 'RADIUS', '');
+register_menu("Radius NAS Status", true, "nas_status", 'RADIUS', '', '', 'success', [], 'radius.nas_status');
+register_plugin_route("nas_status", 'radius.nas_status', true, false);
 
 function nas_status()
 {
@@ -27,6 +28,9 @@ function nas_status()
     $ui->assign('_system_menu', 'radius');
     $admin = Admin::_info();
     $ui->assign('_admin', $admin);
+    if (!can('radius.nas_status', $admin)) {
+        r2(getUrl('dashboard'), 'e', Lang::T('You do not have permission to access this page'));
+    }
 
     // Query to fetch data from the nas table
     $sql = "SELECT id, nasname, shortname FROM nas";

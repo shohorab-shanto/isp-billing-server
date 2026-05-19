@@ -391,30 +391,44 @@
                             {if can('settings.general', $_admin)}
                                 <li {if $_routes[1] eq 'app' }class="active" {/if}><a
                                         href="{Text::url('settings/app')}">{Lang::T('General Settings')}</a></li>
+                            {/if}
+                            {if can('settings.localisation', $_admin)}
                                 <li {if $_routes[1] eq 'localisation' }class="active" {/if}><a
                                         href="{Text::url('settings/localisation')}">{Lang::T('Localisation')}</a></li>
+                            {/if}
+                            {if can('settings.custom_fields', $_admin)}
                                 <li {if $_routes[0] eq 'customfield' }class="active" {/if}><a
                                         href="{Text::url('customfield')}">{Lang::T('Custom Fields')}</a></li>
+                            {/if}
+                            {if can('settings.miscellaneous', $_admin)}
                                 <li {if $_routes[1] eq 'miscellaneous' }class="active" {/if}><a
                                         href="{Text::url('settings/miscellaneous')}">{Lang::T('Miscellaneous')}</a></li>
+                            {/if}
+                            {if can('settings.maintenance', $_admin)}
                                 <li {if $_routes[1] eq 'maintenance' }class="active" {/if}><a
                                         href="{Text::url('settings/maintenance')}">{Lang::T('Maintenance Mode')}</a></li>
+                            {/if}
+                            {if can('settings.widgets', $_admin)}
                                 <li {if $_routes[0] eq 'widgets' }class="active" {/if}><a
                                             href="{Text::url('widgets')}">{Lang::T('Widgets')}</a></li>
+                            {/if}
+                            {if can('settings.notifications', $_admin)}
                                 <li {if $_routes[1] eq 'notifications' }class="active" {/if}><a
                                         href="{Text::url('settings/notifications')}">{Lang::T('User Notification')}</a></li>
+                            {/if}
+                            {if can('settings.devices', $_admin)}
                                 <li {if $_routes[1] eq 'devices' }class="active" {/if}><a
                                         href="{Text::url('settings/devices')}">{Lang::T('Devices')}</a></li>
-                                {if can('rbac.manage', $_admin)}
-                                    <li {if $_routes[1] eq 'rbac' }class="active" {/if}><a
-                                            href="{Text::url('settings/rbac')}">{Lang::T('Roles and Permissions')}</a></li>
-                                {/if}
+                            {/if}
+                            {if can('rbac.manage', $_admin)}
+                                <li {if $_routes[1] eq 'rbac' }class="active" {/if}><a
+                                        href="{Text::url('settings/rbac')}">{Lang::T('Roles and Permissions')}</a></li>
                             {/if}
                             {if can('settings.users', $_admin)}
                                 <li {if $_routes[1] eq 'users' }class="active" {/if}><a
                                         href="{Text::url('settings/users')}">{Lang::T('Administrator Users')}</a></li>
                             {/if}
-                            {if can('settings.backup', $_admin) || can('settings.payment_gateway', $_admin) || can('settings.plugin_manager', $_admin)}
+                            {if can('settings.backup', $_admin) || can('settings.payment_gateway', $_admin) || can('settings.backup_db', $_admin) || can('settings.clear_cache', $_admin) || can('settings.mikrotik_import', $_admin) || can('settings.payment_page', $_admin) || can('settings.system_info', $_admin) || can('settings.alt_wa_gateway', $_admin) || can('settings.plugin_manager', $_admin)}
                                 {if can('settings.backup', $_admin)}
                                 <li {if $_routes[1] eq 'dbstatus' }class="active" {/if}><a
                                         href="{Text::url('settings/dbstatus')}">{Lang::T('Backup/Restore')}</a></li>

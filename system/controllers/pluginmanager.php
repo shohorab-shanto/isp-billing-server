@@ -15,7 +15,7 @@ $action = $routes['1'];
 $ui->assign('_admin', $admin);
 
 
-if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+if (!can('settings.plugin_manager', $admin)) {
     _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
 }
 

@@ -108,9 +108,13 @@ try {
             'odp' => ['network.manage'],
             'radius' => ['menu.radius'],
             'pages' => ['menu.pages'],
-            'settings' => ['menu.settings', 'settings.users', 'settings.general', 'rbac.manage', 'resellers.create'],
-            'customfield' => ['settings.general'],
-            'widgets' => ['settings.general'],
+            'settings' => [
+                'menu.settings', 'settings.general', 'settings.localisation', 'settings.miscellaneous',
+                'settings.maintenance', 'settings.notifications', 'settings.devices', 'settings.users',
+                'settings.backup', 'settings.plugin_manager', 'rbac.manage', 'resellers.create'
+            ],
+            'customfield' => ['settings.custom_fields'],
+            'widgets' => ['settings.widgets'],
             'paymentgateway' => ['settings.payment_gateway'],
             'pluginmanager' => ['settings.plugin_manager'],
             'logs' => ['menu.logs'],
