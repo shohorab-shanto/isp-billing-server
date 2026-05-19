@@ -243,10 +243,19 @@
                         <div class="row">
                             <div class="col-xs-4">
                                 <a href="{Text::url('customers/deactivate/', $d['id'],'/',$package['plan_id'], '&token=', $csrf_token)}"
-                                    id="{$d['id']}" class="btn btn-danger btn-block btn-sm"
-                                    onclick="return ask(this, '{Lang::T('This will deactivate Customer Plan, and make it expired')}')">{Lang::T('Deactivate')}</a>
-                            </div>
-                            <div class="col-xs-8">
+                                       class="btn btn-danger btn-block btn-sm"
+                                       onclick="return ask(this, '{Lang::T('This will deactivate Customer Plan, and make it expired')}')">
+                                       {Lang::T('Deactivate')}
+                                    </a>
+                                        {if $package['status'] == 'off'}
+                                    <a href="{Text::url('customers/activate/', $d['id'],'/',$package['plan_id'], '&token=', $csrf_token)}"
+                                       class="btn btn-success btn-block btn-sm"
+                                       onclick="return confirm('Activate this user?')">
+                                       Activate
+                                    </a>
+                                    {/if}
+                                </div>
+                               <div class="col-xs-8">
                                 <a href="{Text::url('customers/recharge/', $d['id'], '/', $package['plan_id'], '&token=', $csrf_token)}"
                                     class="btn btn-success btn-sm btn-block">{Lang::T('Recharge')}</a>
                             </div>

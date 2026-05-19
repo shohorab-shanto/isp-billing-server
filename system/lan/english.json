@@ -1124,6 +1124,20 @@
     "View_Details": "View Details",
     "Total_Customers": "Total Customers",
     "Disabled_Customers": "Disabled Customers",
-    "No_email_found_": "No email found.",
-    "Buy_Balance_Package": "Buy Balance Package"
+    "Clear_old_logs_": "Clear old logs?",
+    "Edit_Service_Plan": "Edit Service Plan",
+    "Personal_Package_will_only_show_to_personal_Customer__Business_Package_will_only_show_to_Business_Customer": "Personal Package will only show to personal Customer, Business Package will only show to Business Customer",
+    "Price_Before_Discount": "Price Before Discount",
+    "For_Discount_Rate__this_is_price_before_get_discount__must_be_more_expensive_with_real_price": "For Discount Rate, this is price before get discount, must be more expensive with real price",
+    "Expired_Action": "Expired Action",
+    "Expired_Internet_Plan": "Expired Internet Plan",
+    "When_Expired__customer_will_be_move_to_selected_internet_plan": "When Expired, customer will be move to selected internet plan",
+    "on_login___on_up": "on-login \/ on-up",
+    "on_logout___on_down": "on-logout \/ on-down",
+    "Continue_the_PPPoE_Package_change_process_": "Continue the PPPoE Package change process?",
+    "Maintenance_Mode_Settings": "Maintenance Mode Settings",
+    "Force_Logout_": "Force Logout:",
+    "End_Date_": "End Date:",
+    "_Cleared_the_system_cache_": " Cleared the system cache ",
+    "Cache_cleared_successfully_": "Cache cleared successfully!"
 }

@@ -22,72 +22,65 @@ EOT;
 
 switch ($action) {
     case 'csv':
-    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
-        _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
-    }
+        if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+            _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+        }
+        $csrf_token = _req('token');
+        if (!Csrf::check($csrf_token)) {
+            r2(getUrl('customers'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
+        }
 
-    $csrf_token = _req('token');
-    if (!Csrf::check($csrf_token)) {
-        r2(getUrl('customers'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
-    }
+        $cs = ORM::for_table('tbl_customers')
+            ->select('tbl_customers.id', 'id')
+            ->select('tbl_customers.username', 'username')
+            ->select('fullname')
+            ->select('address')
+            ->select('phonenumber')
+            ->select('email')
+            ->select('balance')
+            ->select('service_type')
+            ->order_by_asc('tbl_customers.id')
+            ->find_array();
 
-    $cs = ORM::for_table('tbl_customers')
-        ->left_outer_join('tbl_transactions', ['tbl_customers.username', '=', 'tbl_transactions.username'])
-        ->select('tbl_customers.id', 'id')
-        ->select('tbl_customers.username', 'username')
-        ->select('tbl_customers.fullname', 'fullname')
-        ->select('tbl_customers.address', 'address')
-        ->select('tbl_customers.phonenumber', 'phonenumber')
-        ->select('tbl_customers.email', 'email')
-        ->select('tbl_customers.balance', 'balance')
-        ->select('tbl_customers.service_type', 'service_type')
-        ->select_expr('SUM(tbl_transactions.price)', 'amount')
-        ->group_by('tbl_customers.id')
-        ->order_by_asc('tbl_customers.id')
-        ->find_array();
+        $h = false;
+        set_time_limit(-1);
+        header('Pragma: public');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        header("Content-type: text/csv");
+        header('Content-Disposition: attachment;filename="phpnuxbill_customers_' . date('Y-m-d_H_i') . '.csv"');
+        header('Content-Transfer-Encoding: binary');
 
-    set_time_limit(-1);
+        $headers = [
+            'id',
+            'username',
+            'fullname',
+            'address',
+            'phonenumber',
+            'email',
+            'balance',
+            'service_type',
+        ];
 
-    header('Pragma: public');
-    header('Expires: 0');
-    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="Netdigital_customers_' . date('Y-m-d_H_i') . '.csv"');
-    header('Content-Transfer-Encoding: binary');
+        if (!$h) {
+            echo '"' . implode('","', $headers) . "\"\n";
+            $h = true;
+        }
 
-    echo "\xEF\xBB\xBF";
-
-    $output = fopen('php://output', 'w');
-
-    fputcsv($output, [
-        'id',
-        'username',
-        'fullname',
-        'address',
-        'phonenumber',
-        'email',
-        'balance',
-        'amount',
-        'service_type'
-    ]);
-
-    foreach ($cs as $c) {
-        fputcsv($output, [
-            $c['id'],
-            $c['username'],
-            $c['fullname'],
-            $c['address'],
-            $c['phonenumber'],
-            $c['email'],
-            $c['balance'],
-            $c['amount'] ?: 0,
-            $c['service_type'],
-        ]);
-    }
-
-    fclose($output);
-    exit;
-    break;
+        foreach ($cs as $c) {
+            $row = [
+                $c['id'],
+                $c['username'],
+                $c['fullname'],
+                $c['address'],
+                $c['phonenumber'],
+                $c['email'],
+                $c['balance'],
+                $c['service_type'],
+            ];
+            echo '"' . implode('","', $row) . "\"\n";
+        }
+        break;
         //case csv-prepaid can be moved later to (plan.php)  php file dealing with prepaid users
     case 'csv-prepaid':
         if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
@@ -278,6 +271,58 @@ switch ($action) {
         }
         r2(getUrl('customers/view/') . $id_customer, 'e', 'Cannot find active plan');
         break;
+        case 'activate':
+    if (!in_array($admin['user_type'], ['SuperAdmin', 'Admin'])) {
+        _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
+    }
+
+    $id_customer = $routes['2'];
+    $plan_id = $routes['3'];
+    $csrf_token = _req('token');
+
+    if (!Csrf::check($csrf_token)) {
+        r2(getUrl('customers/view/') . $id_customer, 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
+    }
+
+    $b = ORM::for_table('tbl_user_recharges')
+        ->where('customer_id', $id_customer)
+        ->where('plan_id', $plan_id)
+        ->find_one();
+
+    if ($b) {
+        $p = ORM::for_table('tbl_plans')->where('id', $b['plan_id'])->find_one();
+
+        if ($p) {
+            $c = User::_info($id_customer);
+            $dvc = Package::getDevice($p);
+
+            if ($_app_stage != 'demo') {
+                if (file_exists($dvc)) {
+                    require_once $dvc;
+
+                    // 🔥 Add user back to MikroTik
+                    (new $p['device'])->add_customer($c, $p);
+
+                } else {
+                    new Exception(Lang::T("Devices Not Found"));
+                }
+            }
+
+            // ✅ Activate again
+            $b->status = 'on';
+            $b->expiration = date('Y-m-d', strtotime("+".$p['validity']." ".$p['validity_unit']));
+            $b->time = date('H:i:s');
+            $b->save();
+
+            _log('Admin ' . $admin['username'] . ' Activated ' . $b['namebp'] . ' for ' . $b['username'], 'User', $b['customer_id']);
+            Message::sendTelegram('Admin ' . $admin['username'] . ' Activated ' . $b['namebp'] . ' for u' . $b['username']);
+
+            r2(getUrl('customers/view/') . $id_customer, 's', 'Customer Activated Successfully');
+        }
+    }
+
+    r2(getUrl('customers/view/') . $id_customer, 'e', 'Cannot find plan');
+    break;
     case 'sync':
         $id_customer = $routes['2'];
         $csrf_token = _req('token');
@@ -922,4 +967,10 @@ switch ($action) {
         $ui->assign('csrf_token',  Csrf::generateAndStoreToken());
         $ui->display('admin/customers/list.tpl');
         break;
+        // Example in activate controller
+        $stmt = $db->prepare("UPDATE packages SET status = 'on' WHERE id = :plan_id AND user_id = :user_id");
+        $stmt->execute([
+            ':plan_id' => $plan_id,
+            ':user_id' => $user_id
+]);
 }

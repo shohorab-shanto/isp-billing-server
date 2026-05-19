@@ -37,15 +37,18 @@ function nas_status()
     $offlineCount = 0;
 
     if ($result->num_rows > 0) {
-        // Fetch each row and store it in the nasData array
         while ($row = $result->fetch_assoc()) {
-            // Add a status field for each NAS
-            $status = (pingNas($row['nasname'])) ? 'online' : 'offline';
+
+            // ✅ Updated logic
+            $pingStatus = nas_status_pingNas($row['nasname']);
+            $status = ($pingStatus == 0) ? 'online' : 'offline';
+
             if ($status == 'online') {
                 $onlineCount++;
             } else {
                 $offlineCount++;
             }
+
             $nasData[] = array(
                 'id' => $row['id'],
                 'nasname' => $row['nasname'],
@@ -66,10 +69,11 @@ function nas_status()
     $conn->close();
 }
 
-// Function to ping NAS and return status
-function pingNas($nasIP)
+// ✅ Renamed function to avoid conflict
+function nas_status_pingNas($nasIP)
 {
     $pingresult = exec("ping -c 1 -w 1 $nasIP", $output, $status);
-    return ($status == 0); // 0 means online, any other value means offline
+    return $status; // return raw status (0 = success)
 }
+
 ?>
