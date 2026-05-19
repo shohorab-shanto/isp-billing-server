@@ -26,10 +26,17 @@ switch ($action) {
         _alert(Lang::T('You do not have permission to access this page'), 'danger', "dashboard");
     }
 
-    $csrf_token = _req('token');
-    if (!Csrf::check($csrf_token)) {
-        r2(getUrl('customers'), 'e', Lang::T('Invalid or Expired CSRF Token') . ".");
-    }
+        $cs = ORM::for_table('tbl_customers')
+            ->select('tbl_customers.id', 'id')
+            ->select('tbl_customers.username', 'username')
+            ->select('fullname')
+            ->select('address')
+            ->select('phonenumber')
+            ->select('email')
+            ->select('balance')
+            ->select('service_type')
+            ->order_by_asc('tbl_customers.id')
+            ->find_array();
 
     $cs = ORM::for_table('tbl_customers')
         ->left_outer_join('tbl_transactions', ['tbl_customers.username', '=', 'tbl_transactions.username'])
@@ -59,14 +66,21 @@ switch ($action) {
     }
     $cs = $cs->find_array();
 
-    set_time_limit(-1);
+        $headers = [
+            'id',
+            'username',
+            'fullname',
+            'address',
+            'phonenumber',
+            'email',
+            'balance',
+            'service_type',
+        ];
 
-    header('Pragma: public');
-    header('Expires: 0');
-    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="Netdigital_customers_' . date('Y-m-d_H_i') . '.csv"');
-    header('Content-Transfer-Encoding: binary');
+        if (!$h) {
+            echo '"' . implode('","', $headers) . "\"\n";
+            $h = true;
+        }
 
     echo "\xEF\xBB\xBF";
 
@@ -989,4 +1003,10 @@ switch ($action) {
         $ui->assign('csrf_token',  Csrf::generateAndStoreToken());
         $ui->display('admin/customers/list.tpl');
         break;
+        // Example in activate controller
+        $stmt = $db->prepare("UPDATE packages SET status = 'on' WHERE id = :plan_id AND user_id = :user_id");
+        $stmt->execute([
+            ':plan_id' => $plan_id,
+            ':user_id' => $user_id
+]);
 }
